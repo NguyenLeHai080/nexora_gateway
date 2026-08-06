@@ -13,6 +13,17 @@ function hasValidNexoraInternalKey(request) {
   return !!configured && !!provided && configured.length >= 32 && provided === configured;
 }
 
+function getDashboardLoginRedirect(request) {
+  const nexoraAdminUrl = process.env.NEXORA_ADMIN_URL?.trim();
+  if (nexoraAdminUrl) {
+    const destination = new URL(nexoraAdminUrl);
+    destination.searchParams.set("open", "providers");
+    destination.searchParams.set("reason", "router_session_required");
+    return NextResponse.redirect(destination);
+  }
+  return NextResponse.redirect(new URL("/login", request.url));
+}
+
 let cachedCliToken = null;
 async function getCliToken() {
   if (!cachedCliToken) cachedCliToken = await getConsistentMachineId(CLI_TOKEN_SALT);
@@ -235,7 +246,7 @@ export async function proxy(request) {
           const tunnelHost = settings.tunnelUrl ? new URL(settings.tunnelUrl).hostname.toLowerCase() : "";
           const tailscaleHost = settings.tailscaleUrl ? new URL(settings.tailscaleUrl).hostname.toLowerCase() : "";
           if ((tunnelHost && host === tunnelHost) || (tailscaleHost && host === tailscaleHost)) {
-            return NextResponse.redirect(new URL("/login", request.url));
+            return getDashboardLoginRedirect(request);
           }
         }
       }
@@ -252,11 +263,11 @@ export async function proxy(request) {
       if (await verifyDashboardAuthToken(token)) {
         return NextResponse.next();
       } else {
-        return NextResponse.redirect(new URL("/login", request.url));
+        return getDashboardLoginRedirect(request);
       }
     }
 
-    return NextResponse.redirect(new URL("/login", request.url));
+    return getDashboardLoginRedirect(request);
   }
 
   // Redirect / to /dashboard if logged in, or /dashboard if it's the root
