@@ -55,6 +55,7 @@ services:
       BASE_URL: ${NINE_ROUTER_ORIGIN:-http://localhost:20128}
       NEXT_PUBLIC_BASE_URL: ${NINE_ROUTER_ORIGIN:-http://localhost:20128}
       NEXORA_INTERNAL_KEY: ${NINE_ROUTER_INTERNAL_KEY:-}
+      NEXORA_ADMIN_URL: ${NEXORA_ADMIN_URL:-https://meridian.nexoratech.com.vn/admin/providers}
       JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production}
       ANTIGRAVITY_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
       ANTIGRAVITY_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
