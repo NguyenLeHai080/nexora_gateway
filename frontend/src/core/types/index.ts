@@ -14,13 +14,16 @@ export interface User {
 }
 
 export interface DashboardStats {
-  source?: '9router' | 'fallback';
+  source?: '9router' | 'local' | 'fallback';
   balance: number;
   requests: number;
   successRequests: number;
   failedRequests: number;
   inputTokens: number;
   outputTokens: number;
+  tokenQuota: number;
+  tokenUsed: number;
+  tokenRemaining: number;
   deposited: number;
   spent: number;
   chart: Array<{ time: string; success: number; failed: number; tokens: number; cost: number }>;

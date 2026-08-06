@@ -5,6 +5,13 @@ import { verifyDashboardAuthToken } from "@/lib/auth/dashboardSession";
 
 const CLI_TOKEN_HEADER = "x-9r-cli-token";
 const CLI_TOKEN_SALT = "9r-cli-auth";
+const NEXORA_INTERNAL_HEADER = "x-nexora-internal-key";
+
+function hasValidNexoraInternalKey(request) {
+  const configured = process.env.NEXORA_INTERNAL_KEY;
+  const provided = request.headers.get(NEXORA_INTERNAL_HEADER);
+  return !!configured && !!provided && configured.length >= 32 && provided === configured;
+}
 
 let cachedCliToken = null;
 async function getCliToken() {
@@ -199,14 +206,14 @@ export async function proxy(request) {
   }
 
   if (isPublicLlmApi(pathname)) {
-    if (await canAccessPublicLlmApi(request)) return NextResponse.next();
+    if (hasValidNexoraInternalKey(request) || await canAccessPublicLlmApi(request)) return NextResponse.next();
     return NextResponse.json({ error: "API key required for remote API access" }, { status: 401 });
   }
 
   // Deny-by-default for /api/* — public allow-list bypasses, everything else requires auth.
   if (pathname.startsWith("/api/")) {
     if (isPublicApi(pathname)) return NextResponse.next();
-    if (await hasValidCliToken(request) || await isAuthenticated(request))
+    if (hasValidNexoraInternalKey(request) || await hasValidCliToken(request) || await isAuthenticated(request))
       return NextResponse.next();
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

@@ -15,7 +15,7 @@ export function DashboardPage() {
     <section className="hero-balance"><div><p className="eyebrow">{admin ? 'TONG DOANH THU' : 'SO DU KHA DUNG'}</p><strong>{formatVnd(data.balance)}</strong><span>Cap nhat vua xong</span></div><div className="hero-orb"><Wallet /></div></section>
     <section className="metric-grid">
       <Metric icon={<Activity />} label="Tong request" value={formatNumber(data.requests)} note={`${formatNumber(data.successRequests)} thanh cong`} />
-      <Metric icon={<Cpu />} label="Token da xu ly" value={formatNumber(data.inputTokens + data.outputTokens)} note={`${formatNumber(data.outputTokens)} output`} />
+      <Metric icon={<Cpu />} label={admin?'Token đã xử lý':data.tokenQuota>0?'Token còn lại':'Token đã dùng'} value={formatNumber(admin?data.inputTokens+data.outputTokens:data.tokenQuota>0?data.tokenRemaining:data.tokenUsed)} note={admin?`${formatNumber(data.outputTokens)} output`:data.tokenQuota>0?`Đã dùng ${formatNumber(data.tokenUsed)} / quota ${formatNumber(data.tokenQuota)}`:'Không giới hạn · tính phí theo số dư ví'} />
       <Metric icon={<ArrowDownToLine />} label="Da nap" value={formatVnd(data.deposited)} note="Tong giao dich credit" />
       <Metric icon={<ArrowUpFromLine />} label={data.source === '9router' ? 'Chi phi 9Router' : 'Da chi'} value={data.source === '9router' ? `$${Number(data.spent).toFixed(4)}` : formatVnd(data.spent)} note={data.source === '9router' ? 'Usage & Analytics / 24h' : 'Theo gia model'} />
     </section>

@@ -3,14 +3,15 @@ from pydantic import BaseModel, Field, PositiveInt
 import jwt
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 import httpx
 
 from app.core.database import get_db
 from app.core.dependencies import require_super_admin
-from app.core.models import AuditLog, ModelCatalog, RoutingPool, Transaction, User, UserModel
-from app.core.security import hash_password
+from app.core.models import ApiKey, AuditLog, DepositOrder, ModelCatalog, RoutingPool, Transaction, UsageLog, User, UserModel, UserSetting
+from app.core.security import hash_api_secret, hash_password
+import secrets
 from app.modules.users.repository import serialize_user, users_repository
 from app.core.config import settings
 from app.integrations.nine_router import nine_router
@@ -45,8 +46,23 @@ class BalanceAdjustmentRequest(BaseModel):
     description: str = Field(min_length=3, max_length=255)
 
 
+class TokenAdjustmentRequest(BaseModel):
+    operation: str = Field(pattern="^(credit|debit|set)$")
+    amount: int = Field(ge=0)
+    description: str = Field(min_length=3, max_length=255)
+
+
 class GrantModelRequest(BaseModel):
     model_id: str
+
+
+class SetUserModelsRequest(BaseModel):
+    model_ids: list[str] = Field(default_factory=list)
+
+
+class AdminApiKeyRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
+    quota: int | None = Field(default=None, ge=1)
 
 
 class ModelUpdateRequest(BaseModel):
@@ -96,6 +112,12 @@ def model_json(item: ModelCatalog) -> dict:
 
 def routing_pool_json(item: RoutingPool) -> dict:
     return {"id": item.id, "name": item.name, "modelId": item.model_id, "provider": item.provider, "strategy": item.strategy, "maxConcurrency": item.max_concurrency, "perUserConcurrency": item.per_user_concurrency, "cooldownSeconds": item.cooldown_seconds, "enabled": item.enabled, "connectionIds": item.connection_ids or [], **routing_capacity.snapshot(item.id)}
+
+
+def api_key_json(item: ApiKey, secret: str | None = None) -> dict:
+    data = {"id": item.id, "name": item.name, "prefix": item.prefix, "status": item.status, "quota": item.quota, "createdAt": item.created_at.strftime("%d/%m/%Y"), "lastUsed": item.last_used.strftime("%d/%m/%Y %H:%M") if item.last_used else None}
+    if secret: data["key"] = secret
+    return data
 
 
 @router.get("/routing-pools")
@@ -163,6 +185,26 @@ def archive_user(user_id: int, admin: User = Depends(require_super_admin), db: S
     return serialize_user(user)
 
 
+@router.delete("/users/{user_id}/permanent", status_code=204)
+def permanently_delete_user(user_id: int, admin: User = Depends(require_super_admin), db: Session = Depends(get_db)) -> None:
+    user = users_repository.get(db, user_id)
+    if not user or user.role != "user": raise HTTPException(404, "User not found")
+    if user.status != "archived": raise HTTPException(409, "Archive the account before permanent deletion")
+    email = user.email
+    for model, condition in (
+        (ApiKey, ApiKey.user_id == user_id),
+        (UserModel, UserModel.user_id == user_id),
+        (UsageLog, UsageLog.user_id == user_id),
+        (Transaction, Transaction.user_id == user_id),
+        (DepositOrder, DepositOrder.user_id == user_id),
+        (UserSetting, UserSetting.user_id == user_id),
+    ):
+        db.execute(delete(model).where(condition))
+    db.delete(user)
+    audit(db, admin.id, "user.permanently_deleted", f"user:{user_id}", email)
+    db.commit()
+
+
 @router.patch("/users/{user_id}/status")
 def toggle_status(user_id: int, admin: User = Depends(require_super_admin), db: Session = Depends(get_db)) -> dict:
     user = users_repository.get(db, user_id)
@@ -175,7 +217,8 @@ def toggle_status(user_id: int, admin: User = Depends(require_super_admin), db: 
 def top_up(user_id: int, payload: TopUpRequest, admin: User = Depends(require_super_admin), db: Session = Depends(get_db)) -> dict:
     user = users_repository.get(db, user_id)
     if not user or user.role != "user": raise HTTPException(404, "User not found")
-    user.balance += payload.amount; user.token_quota += payload.token_amount or payload.amount * 10
+    user.balance += payload.amount
+    if payload.token_amount: user.token_quota += payload.token_amount
     db.add(Transaction(user_id=user.id, type="credit", amount=payload.amount, description=payload.description)); audit(db, admin.id, "wallet.credited", f"user:{user.id}", str(payload.amount)); db.commit()
     return serialize_user(user)
 
@@ -186,8 +229,29 @@ def adjust_balance(user_id: int, payload: BalanceAdjustmentRequest, admin: User 
     if not user or user.role != "user": raise HTTPException(404, "User not found")
     if payload.type == "debit" and user.balance < payload.amount: raise HTTPException(400, "Insufficient balance")
     direction = 1 if payload.type == "credit" else -1
-    user.balance += direction * payload.amount; user.token_quota = max(user.token_used, user.token_quota + direction * payload.token_amount)
-    db.add(Transaction(user_id=user.id, type=payload.type, amount=payload.amount, description=payload.description)); audit(db, admin.id, f"wallet.{payload.type}", f"user:{user.id}", str(payload.amount)); db.commit()
+    token_amount = payload.token_amount
+    user.balance += direction * payload.amount
+    if token_amount: user.token_quota = max(user.token_used, user.token_quota + direction * token_amount)
+    db.add(Transaction(user_id=user.id, type=payload.type, amount=payload.amount, description=payload.description)); audit(db, admin.id, f"wallet.{payload.type}", f"user:{user.id}", f"{payload.amount} VND"); db.commit()
+    return serialize_user(user)
+
+
+@router.post("/users/{user_id}/tokens")
+def adjust_tokens(user_id: int, payload: TokenAdjustmentRequest, admin: User = Depends(require_super_admin), db: Session = Depends(get_db)) -> dict:
+    user = users_repository.get(db, user_id)
+    if not user or user.role != "user": raise HTTPException(404, "User not found")
+    before = user.token_quota
+    if payload.operation == "credit":
+        user.token_quota += payload.amount
+    elif payload.operation == "debit":
+        if user.token_quota == 0: raise HTTPException(400, "Unlimited quota cannot be debited; set a finite quota first")
+        if user.token_quota - payload.amount < user.token_used: raise HTTPException(400, "Token quota cannot be lower than tokens already used")
+        user.token_quota -= payload.amount
+    else:
+        if payload.amount != 0 and payload.amount < user.token_used: raise HTTPException(400, "Token quota cannot be lower than tokens already used")
+        user.token_quota = payload.amount
+    audit(db, admin.id, f"tokens.{payload.operation}", f"user:{user.id}", f"{before} -> {user.token_quota}; {payload.description}")
+    db.commit(); db.refresh(user)
     return serialize_user(user)
 
 
@@ -198,6 +262,61 @@ def grant_model(user_id: int, payload: GrantModelRequest, admin: User = Depends(
     if not model: raise HTTPException(400, "Model not found")
     if not db.get(UserModel, (user_id, payload.model_id)): db.add(UserModel(user_id=user_id, model_id=payload.model_id)); audit(db, admin.id, "model.granted", f"user:{user_id}", payload.model_id); db.commit()
     db.refresh(user); return serialize_user(user)
+
+
+@router.put("/users/{user_id}/models")
+def set_user_models(user_id: int, payload: SetUserModelsRequest, admin: User = Depends(require_super_admin), db: Session = Depends(get_db)) -> dict:
+    user = users_repository.get(db, user_id)
+    if not user or user.role != "user": raise HTTPException(404, "User not found")
+    requested_ids = list(dict.fromkeys(payload.model_ids))
+    valid_ids = set(db.scalars(select(ModelCatalog.id).where(ModelCatalog.id.in_(requested_ids), ModelCatalog.enabled.is_(True)))) if requested_ids else set()
+    unknown_ids = [model_id for model_id in requested_ids if model_id not in valid_ids]
+    if unknown_ids: raise HTTPException(400, f"Unknown or disabled models: {', '.join(unknown_ids)}")
+    db.execute(delete(UserModel).where(UserModel.user_id == user_id))
+    db.add_all(UserModel(user_id=user_id, model_id=model_id) for model_id in requested_ids)
+    audit(db, admin.id, "models.replaced", f"user:{user_id}", f"{len(requested_ids)} models")
+    db.commit(); db.refresh(user)
+    return serialize_user(user)
+
+
+@router.get("/users/{user_id}/api-keys")
+def admin_list_api_keys(user_id: int, _: User = Depends(require_super_admin), db: Session = Depends(get_db)) -> list[dict]:
+    user = users_repository.get(db, user_id)
+    if not user or user.role != "user": raise HTTPException(404, "User not found")
+    return [api_key_json(item) for item in db.scalars(select(ApiKey).where(ApiKey.user_id == user_id).order_by(ApiKey.created_at.desc()))]
+
+
+@router.post("/users/{user_id}/api-keys", status_code=201)
+def admin_create_api_key(user_id: int, payload: AdminApiKeyRequest, admin: User = Depends(require_super_admin), db: Session = Depends(get_db)) -> dict:
+    user = users_repository.get(db, user_id)
+    if not user or user.role != "user": raise HTTPException(404, "User not found")
+    raw = f"nx-{secrets.token_urlsafe(28)}"
+    item = ApiKey(user_id=user_id, name=payload.name.strip(), prefix=raw[:14], secret_hash=hash_api_secret(raw), quota=payload.quota)
+    db.add(item); db.flush(); audit(db, admin.id, "api_key.created", f"user:{user_id}/key:{item.id}", item.name); db.commit(); db.refresh(item)
+    return api_key_json(item, raw)
+
+
+@router.put("/users/{user_id}/api-keys/{key_id}")
+def admin_update_api_key(user_id: int, key_id: int, payload: AdminApiKeyRequest, admin: User = Depends(require_super_admin), db: Session = Depends(get_db)) -> dict:
+    item = db.scalar(select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user_id))
+    if not item: raise HTTPException(404, "API key not found")
+    item.name = payload.name.strip(); item.quota = payload.quota; audit(db, admin.id, "api_key.updated", f"user:{user_id}/key:{key_id}", item.name); db.commit()
+    return api_key_json(item)
+
+
+@router.patch("/users/{user_id}/api-keys/{key_id}/toggle")
+def admin_toggle_api_key(user_id: int, key_id: int, admin: User = Depends(require_super_admin), db: Session = Depends(get_db)) -> dict:
+    item = db.scalar(select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user_id))
+    if not item: raise HTTPException(404, "API key not found")
+    item.status = "disabled" if item.status == "active" else "active"; audit(db, admin.id, "api_key.status", f"user:{user_id}/key:{key_id}", item.status); db.commit()
+    return api_key_json(item)
+
+
+@router.delete("/users/{user_id}/api-keys/{key_id}", status_code=204)
+def admin_delete_api_key(user_id: int, key_id: int, admin: User = Depends(require_super_admin), db: Session = Depends(get_db)) -> None:
+    item = db.scalar(select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user_id))
+    if not item: raise HTTPException(404, "API key not found")
+    db.delete(item); audit(db, admin.id, "api_key.deleted", f"user:{user_id}/key:{key_id}", item.name); db.commit()
 
 
 @router.delete("/users/{user_id}/models/{model_id:path}")
@@ -346,15 +465,10 @@ async def test_router_connection(connection_id: str, _: User = Depends(require_s
 
 @router.post("/router/sync")
 async def sync_router_models(_: User = Depends(require_super_admin), db: Session = Depends(get_db)) -> dict:
-    if not settings.nine_router_api_key:
-        raise HTTPException(503, "9Router API key is not configured")
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            response = await client.get(f"{settings.nine_router_base_url.rstrip('/')}/models", headers={"Authorization": f"Bearer {settings.nine_router_api_key}"})
-        response.raise_for_status()
+        upstream = await nine_router.models()
     except httpx.HTTPError as exc:
         raise HTTPException(502, f"9Router models sync failed: {exc}") from exc
-    upstream = response.json().get("data", [])
     synced = 0
     for item in upstream:
         model_id = item.get("id")

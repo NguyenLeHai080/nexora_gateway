@@ -64,7 +64,9 @@ export async function handleChat(request, clientRawRequest = null) {
 
   // Enforce API key if enabled in settings
   const settings = await getSettings();
-  if (settings.requireApiKey) {
+  const internalKey = request.headers.get("x-nexora-internal-key");
+  const trustedNexora = !!process.env.NEXORA_INTERNAL_KEY && process.env.NEXORA_INTERNAL_KEY.length >= 32 && internalKey === process.env.NEXORA_INTERNAL_KEY;
+  if (settings.requireApiKey && !trustedNexora) {
     if (!apiKey) {
       log.warn("AUTH", "Missing API key (requireApiKey=true)");
       return errorResponse(HTTP_STATUS.UNAUTHORIZED, "Missing API key");

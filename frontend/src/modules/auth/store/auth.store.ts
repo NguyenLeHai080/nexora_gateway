@@ -7,6 +7,7 @@ interface AuthState {
   loading: boolean;
   hydrated: boolean;
   login: (email: string, password: string) => Promise<User>;
+  register: (name: string, email: string, password: string) => Promise<User>;
   restore: () => Promise<void>;
   logout: () => void;
 }
@@ -19,6 +20,17 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true });
     try {
       const { data } = await apiClient.post('/auth/login', { email, password });
+      localStorage.setItem('nexora_access_token', data.access_token);
+      set({ user: data.user });
+      return data.user;
+    } finally {
+      set({ loading: false, hydrated: true });
+    }
+  },
+  register: async (name, email, password) => {
+    set({ loading: true });
+    try {
+      const { data } = await apiClient.post('/auth/register', { name, email, password });
       localStorage.setItem('nexora_access_token', data.access_token);
       set({ user: data.user });
       return data.user;
@@ -45,4 +57,3 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: null });
   },
 }));
-

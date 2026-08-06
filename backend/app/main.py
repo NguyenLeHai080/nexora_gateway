@@ -14,6 +14,7 @@ from app.modules.models.router import router as models_router
 from app.modules.gateway.router import router as gateway_router
 from app.modules.wallet.router import router as wallet_router
 from app.modules.banking.router import router as banking_router
+from app.modules.tool_setup.router import router as tool_setup_router
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=settings.allowed_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -42,7 +43,7 @@ async def proxy_embedded_router_api(request: Request, call_next):
         }
         return Response(upstream.content, status_code=upstream.status_code, headers=response_headers)
     return await call_next(request)
-for router in (auth_router, dashboard_router, wallet_router, api_keys_router, models_router, account_router, admin_router):
+for router in (auth_router, dashboard_router, wallet_router, api_keys_router, models_router, account_router, admin_router, tool_setup_router):
     app.include_router(router, prefix="/api")
 app.include_router(gateway_router)
 app.include_router(banking_router, prefix="/api")

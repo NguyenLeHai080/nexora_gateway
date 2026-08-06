@@ -413,6 +413,7 @@ export function openaiResponsesToOpenAIResponse(chunk, state) {
   if (eventType === "response.output_text.delta") {
     const delta = data.delta || "";
     if (!delta) return null;
+    state.sawOutputText = true;
 
     return buildChunk(
       { id: state.chatId, created: state.created, model: state.model || MODEL_FALLBACK },
@@ -420,8 +421,18 @@ export function openaiResponsesToOpenAIResponse(chunk, state) {
     );
   }
 
-  // Text content done (ignore, we handle via delta)
+  // Some Responses providers only send the completed text in the *.done event.
+  // Emit it when no delta was received, otherwise Claude clients see HTTP 200
+  // with an empty SSE body and report a malformed response.
   if (eventType === "response.output_text.done") {
+    const text = data.text || data.output_text || "";
+    if (!state.sawOutputText && text) {
+      state.sawOutputText = true;
+      return buildChunk(
+        { id: state.chatId, created: state.created, model: state.model || MODEL_FALLBACK },
+        { content: text }
+      );
+    }
     return null;
   }
 
@@ -429,6 +440,7 @@ export function openaiResponsesToOpenAIResponse(chunk, state) {
   if (eventType === "response.output_item.added" && (data.item?.type === RESPONSES_ITEM.FUNCTION_CALL || data.item?.type === "custom_tool_call")) {
     const item = data.item;
     state.currentToolCallId = item.call_id || fallbackToolCallId();
+    state.sawToolOutput = true;
 
     return buildChunk(
       { id: state.chatId, created: state.created, model: state.model || MODEL_FALLBACK },
@@ -454,10 +466,47 @@ export function openaiResponsesToOpenAIResponse(chunk, state) {
     );
   }
 
-  // Function call done (standard or custom_tool_call variant)
+  // Function call done (standard or custom_tool_call variant). A few Codex
+  // streams omit item.added/argument deltas and only provide the full call here.
   if (eventType === "response.output_item.done" && (data.item?.type === RESPONSES_ITEM.FUNCTION_CALL || data.item?.type === "custom_tool_call")) {
+    const item = data.item;
+    if (!state.currentToolCallId) {
+      state.currentToolCallId = item.call_id || fallbackToolCallId();
+      state.sawToolOutput = true;
+      const chunk = buildChunk(
+        { id: state.chatId, created: state.created, model: state.model || MODEL_FALLBACK },
+        {
+          tool_calls: [{
+            index: state.toolCallIndex,
+            id: state.currentToolCallId,
+            type: OPENAI_BLOCK.FUNCTION,
+            function: { name: item.name || "", arguments: item.arguments || item.input || "{}" }
+          }]
+        }
+      );
+      state.toolCallIndex++;
+      state.currentToolCallId = null;
+      return chunk;
+    }
     state.toolCallIndex++;
+    state.currentToolCallId = null;
     return null;
+  }
+
+  // Recover providers that put the complete assistant message only in
+  // response.output_item.done instead of streaming output_text.delta events.
+  if (eventType === "response.output_item.done" && data.item?.type === RESPONSES_ITEM.MESSAGE && !state.sawOutputText) {
+    const text = (data.item.content || [])
+      .filter(part => part?.type === RESPONSES_ITEM.OUTPUT_TEXT || part?.type === "output_text" || part?.type === "text")
+      .map(part => part.text || part.output_text || "")
+      .join("");
+    if (text) {
+      state.sawOutputText = true;
+      return buildChunk(
+        { id: state.chatId, created: state.created, model: state.model || MODEL_FALLBACK },
+        { content: text }
+      );
+    }
   }
 
   // Response completed
@@ -474,6 +523,30 @@ export function openaiResponsesToOpenAIResponse(chunk, state) {
       state.usage = buildUsage({ promptTokens: inputTokens, completionTokens: outputTokens, totalTokens: inputTokens + outputTokens, cachedTokens: cacheReadTokens });
     }
     
+    const recovered = [];
+    if (!state.sawOutputText && !state.sawToolOutput && Array.isArray(data.response?.output)) {
+      for (const item of data.response.output) {
+        if (item?.type === RESPONSES_ITEM.MESSAGE) {
+          const text = (item.content || []).map(part => part?.text || part?.output_text || "").join("");
+          if (text) {
+            state.sawOutputText = true;
+            recovered.push(buildChunk(
+              { id: state.chatId, created: state.created, model: state.model || MODEL_FALLBACK },
+              { content: text }
+            ));
+          }
+        }
+      }
+    }
+
+    if (!state.sawOutputText && !state.sawToolOutput && !state.sawReasoningOutput && recovered.length === 0) {
+      state.sawOutputText = true;
+      recovered.push(buildChunk(
+        { id: state.chatId, created: state.created, model: state.model || MODEL_FALLBACK },
+        { content: "Upstream provider completed without returning usable content. Please retry." }
+      ));
+    }
+
     if (!state.finishReasonSent) {
       const finishReason = computeFinishReason(state);
 
@@ -491,7 +564,7 @@ export function openaiResponsesToOpenAIResponse(chunk, state) {
         finalChunk.usage = state.usage;
       }
       
-      return finalChunk;
+      return recovered.length ? [...recovered, finalChunk] : finalChunk;
     }
     return null;
   }
@@ -520,6 +593,7 @@ export function openaiResponsesToOpenAIResponse(chunk, state) {
   if (eventType === "response.reasoning_summary_text.delta") {
     const delta = data.delta || "";
     if (!delta) return null;
+    state.sawReasoningOutput = true;
     return buildChunk(
       { id: state.chatId, created: state.created, model: state.model || MODEL_FALLBACK },
       reasoningDelta(delta)

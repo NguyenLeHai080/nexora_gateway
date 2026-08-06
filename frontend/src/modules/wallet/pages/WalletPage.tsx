@@ -14,7 +14,7 @@ interface Bank{id:number;bankCode:string;bankName:string;accountNumber:string;ac
 interface Deposit{id:number;code:string;expectedAmount:number;paidAmount:number;status:string;expiresAt:string;qrUrl:string;bank:Bank}
 export function WalletPage(){
  const client=useQueryClient(),[adding,setAdding]=useState(false),[amount,setAmount]=useState(10000),[bankId,setBankId]=useState(0),[selected,setSelected]=useState<Deposit|null>(null);
- const{data=[]}=useQuery({queryKey:['transactions'],queryFn:async()=>(await apiClient.get<Transaction[]>('/wallet/transactions')).data});
+ const{data=[]}=useQuery({queryKey:['transactions'],queryFn:async()=>(await apiClient.get<Transaction[]>('/wallet/transactions')).data,refetchInterval:5000});
  const{data:banks=[]}=useQuery({queryKey:['wallet-banks'],queryFn:async()=>(await apiClient.get<Bank[]>('/wallet/bank-accounts')).data});
  const{data:deposits=[]}=useQuery({queryKey:['deposits'],queryFn:async()=>(await apiClient.get<Deposit[]>('/wallet/deposits')).data,refetchInterval:5000});
  const create=useMutation({mutationFn:async()=>(await apiClient.post<Deposit>('/wallet/deposits',{bank_account_id:bankId||banks[0]?.id,amount})).data,onSuccess:item=>{client.invalidateQueries({queryKey:['deposits']});setAdding(false);setSelected(item)}});
