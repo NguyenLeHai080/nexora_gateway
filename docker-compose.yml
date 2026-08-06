@@ -31,7 +31,10 @@ services:
     networks: [nexora]
 
   router:
-    build: ./modules/9router/app
+    build:
+      context: ./modules/9router/app
+      args:
+        NEXT_PUBLIC_BASE_URL: ${NINE_ROUTER_ORIGIN:-http://localhost:20128}
     image: ${NINE_ROUTER_IMAGE:-9router-local:latest}
     restart: unless-stopped
     env_file:
@@ -43,6 +46,8 @@ services:
       HOSTNAME: "0.0.0.0"
       NODE_ENV: production
       HEADROOM_URL: http://headroom:8787
+      BASE_URL: ${NINE_ROUTER_ORIGIN:-http://localhost:20128}
+      NEXT_PUBLIC_BASE_URL: ${NINE_ROUTER_ORIGIN:-http://localhost:20128}
     ports:
       - "127.0.0.1:${NINE_ROUTER_PORT:-20128}:20128"
     volumes:
