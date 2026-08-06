@@ -401,6 +401,7 @@ export function createSSEStream(options = {}) {
                 const output = formatSSE(item, sourceFormat);
                 reqLogger?.appendConvertedChunk?.(output);
                 controller.enqueue(sharedEncoder.encode(output));
+                sseEmittedCount++;
               }
             }
           }
@@ -421,6 +422,27 @@ export function createSSEStream(options = {}) {
             const output = formatSSE(item, sourceFormat);
             reqLogger?.appendConvertedChunk?.(output);
             controller.enqueue(sharedEncoder.encode(output));
+            sseEmittedCount++;
+          }
+        }
+
+        // Never finish an Anthropic request with a successful but empty body.
+        // Claude Code treats HTTP 200 without any protocol events as malformed.
+        if (sourceFormat === FORMATS.CLAUDE && sseEmittedCount === 0) {
+          const messageId = `msg_gateway_${Date.now()}`;
+          const fallbackEvents = [
+            { type: "message_start", message: { id: messageId, type: "message", role: "assistant", model: model || "gateway", content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 0, output_tokens: 0 } } },
+            { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } },
+            { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Upstream provider completed without returning usable content. Please retry." } },
+            { type: "content_block_stop", index: 0 },
+            { type: "message_delta", delta: { stop_reason: "end_turn", stop_sequence: null }, usage: { output_tokens: 0 } },
+            { type: "message_stop" },
+          ];
+          for (const item of fallbackEvents) {
+            const output = formatSSE(item, FORMATS.CLAUDE);
+            reqLogger?.appendConvertedChunk?.(output);
+            controller.enqueue(sharedEncoder.encode(output));
+            sseEmittedCount++;
           }
         }
 

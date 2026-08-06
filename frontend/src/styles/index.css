@@ -28,7 +28,7 @@
 
 @layer components {
   .app-shell { @apply min-h-screen; }
-  .sidebar { @apply fixed inset-y-0 left-0 z-20 flex w-[270px] flex-col border-r border-line bg-white px-6 pb-5 pt-6 max-[1000px]:-translate-x-full max-[1000px]:transition-transform; }
+  .sidebar { @apply fixed inset-y-0 left-0 z-20 flex w-[270px] flex-col overflow-y-auto border-r border-line bg-white px-6 pb-5 pt-6 max-[1000px]:-translate-x-full max-[1000px]:transition-transform; }
   .sidebar.open { @apply max-[1000px]:translate-x-0; }
   .sidebar-head { @apply mb-10 flex items-center justify-between; }
   .brand { @apply flex items-center gap-[11px] font-extrabold tracking-[-.5px]; }
@@ -83,6 +83,7 @@
   .card-heading > span { @apply font-mono text-[10px] font-medium text-slate-400; }
   .button { @apply inline-flex min-h-[39px] items-center justify-center gap-2 rounded-[9px] border border-slate-300 bg-white px-3.5 text-xs font-bold text-ink transition disabled:cursor-not-allowed disabled:opacity-50; }
   .button svg { @apply w-[15px]; }
+  .spin { @apply animate-spin; }
   .button.primary { @apply border-accent bg-accent text-white shadow-[0_8px_20px_#ff5d2a2a] hover:bg-orange-600; }
   .button.ghost { @apply hover:bg-slate-100; }
   .button.danger { @apply border-red-200 bg-red-50 text-red-600; }
@@ -154,6 +155,97 @@
   .model-card > div span { @apply grid gap-1 text-slate-400; }
   .model-card p { @apply mb-0 mt-[18px] flex items-center gap-1.5 text-[11px] text-emerald-700; }
   .model-card p svg { @apply w-[15px]; }
+  .tool-layout { @apply grid grid-cols-[minmax(0,1.65fr)_minmax(330px,.9fr)] items-start gap-5 max-[1050px]:grid-cols-1; }
+  .setup-card, .pricing-card { @apply p-6; }
+  .setup-card-head { @apply mb-5 flex items-start justify-between gap-4 border-b border-slate-100 pb-5; }
+  .setup-card-head p, .setup-card-head h2, .pricing-title p, .pricing-title h2 { @apply m-0; }
+  .setup-card-head h2, .pricing-title h2 { @apply mt-1.5 text-lg; }
+  .setup-card-head > span { @apply font-mono text-[10px] font-medium text-indigo-600; }
+  .setup-card-compact .setup-card-head { @apply mb-5; }
+  .setup-card-compact .setup-card-head > div > p:last-child { @apply mb-0 mt-2 text-xs text-slate-500; }
+  .setup-card-compact .setup-fields { @apply mx-auto w-full max-w-[720px]; }
+  .setup-flow { @apply grid grid-cols-[190px_minmax(0,1fr)] gap-7 max-[760px]:grid-cols-1; }
+  .setup-flow aside h3 { @apply mb-1.5 mt-3 text-sm; }
+  .setup-flow aside > p:last-child { @apply m-0 text-xs leading-5 text-slate-500; }
+  .setup-fields { @apply min-w-0; }
+  .setup-fields label { @apply mb-4 grid gap-2 font-mono text-[10px] font-medium uppercase tracking-[.7px] text-slate-500; }
+  .setup-fields label small { @apply font-sans text-[11px] font-normal normal-case leading-5 tracking-normal text-slate-500; }
+  .setup-fields select, .setup-fields input { @apply h-11 w-full rounded-[9px] border border-slate-300 bg-slate-50 px-3 font-sans text-xs normal-case tracking-normal text-ink outline-none focus:border-indigo-500 focus:ring-3 focus:ring-indigo-100; }
+  .setup-two-columns { @apply grid grid-cols-2 gap-4 max-[680px]:grid-cols-1; }
+  .generate-command { @apply mb-1 border-indigo-600! bg-indigo-600! hover:bg-indigo-700!; }
+  .setup-error { @apply mb-0 mt-2 text-xs text-red-600; }
+  .setup-warning { @apply mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800; }
+  .setup-warning svg { @apply size-4; }
+  .setup-warning a { @apply ml-auto inline-flex items-center font-bold text-amber-900; }
+  .command-result { @apply mt-5 border-t border-slate-200 pt-5; }
+  .command-result > div:first-child { @apply mb-3 flex items-start justify-between gap-3 max-[600px]:flex-col; }
+  .command-result h3 { @apply mb-1 mt-1 text-base; }
+  .command-result p { @apply m-0 text-[11px] text-slate-500; }
+  .command-success { @apply inline-flex items-center gap-1 font-mono text-[9px] font-semibold uppercase text-emerald-600; }
+  .command-success svg { @apply size-3; }
+  .command-result pre { @apply max-h-[220px] overflow-auto whitespace-pre-wrap break-all rounded-xl border border-slate-200 bg-slate-950 p-4 text-[11px] leading-5 text-slate-100; }
+  .command-result-compact { @apply rounded-xl border border-emerald-200 bg-emerald-50/40 p-4; }
+  .command-result-compact pre { @apply mb-0 max-h-none whitespace-pre-wrap break-all bg-slate-950; }
+  .copy-command { @apply shrink-0; }
+  .command-security { @apply mt-3! text-amber-700!; }
+  .endpoint-note { @apply mt-3 flex items-center gap-3 rounded-xl bg-slate-50 p-3; }
+  .endpoint-note > svg { @apply size-5 text-indigo-600; }
+  .endpoint-note span { @apply grid gap-1 text-[10px] text-slate-500; }
+  .endpoint-note code { @apply text-[11px] text-slate-700; }
+  .pricing-title { @apply flex items-center justify-between; }
+  .pricing-title > svg { @apply size-5 text-indigo-500; }
+  .pricing-card > p { @apply mb-5 text-xs leading-5 text-slate-500; }
+  .pricing-head, .pricing-list article { @apply grid grid-cols-[minmax(0,1fr)_80px_80px] items-center gap-2; }
+  .pricing-head { @apply border-b border-slate-200 pb-3 font-mono text-[9px] font-medium tracking-[.8px] text-slate-400; }
+  .pricing-head span:not(:first-child) { @apply text-right; }
+  .pricing-list { @apply max-h-[610px] overflow-y-auto; }
+  .pricing-list article { @apply border-b border-slate-100 py-4; }
+  .pricing-list article div { @apply min-w-0; }
+  .pricing-list strong { @apply block truncate font-mono text-[11px] font-medium text-indigo-600; }
+  .pricing-list small { @apply mt-1 block truncate text-[10px] text-slate-500; }
+  .pricing-list article > b { @apply text-right font-mono text-[11px] font-medium; }
+  .pricing-empty { @apply py-10 text-center text-xs text-slate-400; }
+  .admin-key-layout { @apply grid grid-cols-[340px_minmax(0,1fr)] items-start gap-5 max-[900px]:grid-cols-1; }
+  .account-picker { @apply overflow-hidden; }
+  .account-picker-head { @apply border-b border-slate-200 p-5; }
+  .account-picker-head p, .account-picker-head h3 { @apply m-0; }
+  .account-picker-head h3 { @apply mb-4 mt-1; }
+  .account-picker-head .search, .account-picker-head .search input { @apply w-full; }
+  .account-picker-list { @apply max-h-[620px] overflow-y-auto p-2; }
+  .account-picker-list > button { @apply flex w-full items-center gap-3 rounded-xl border-0 bg-transparent p-3 text-left transition hover:bg-slate-50; }
+  .account-picker-list > button.active { @apply bg-indigo-50 shadow-[inset_3px_0_#4f46e5]; }
+  .account-picker-list > button > span:nth-child(2) { @apply min-w-0 flex-1; }
+  .account-picker-list b, .account-picker-list small { @apply block truncate; }
+  .account-picker-list b { @apply text-xs; }
+  .account-picker-list small { @apply mt-1 text-[10px] text-slate-500; }
+  .managed-key-panel { @apply min-h-[420px] overflow-hidden; }
+  .managed-key-empty { @apply grid min-h-[420px] place-items-center content-center gap-2 p-8 text-center; }
+  .managed-key-empty > svg { @apply size-8 text-slate-300; }
+  .managed-key-empty h3, .managed-key-empty p { @apply m-0; }
+  .managed-key-empty p { @apply text-xs text-slate-500; }
+  .managed-key-empty.small { @apply min-h-[270px]; }
+  .managed-user-summary { @apply flex items-center justify-between gap-5 border-b border-slate-200 p-5 max-[680px]:items-start max-[680px]:flex-col; }
+  .managed-user-summary > div:first-child { @apply flex items-center gap-3; }
+  .managed-user-summary p, .managed-user-summary h3, .managed-user-summary small { @apply m-0; }
+  .managed-user-summary h3 { @apply mt-1; }
+  .managed-user-summary small { @apply text-[10px] text-slate-500; }
+  .managed-user-summary dl { @apply m-0 flex gap-7; }
+  .managed-user-summary dl div { @apply grid gap-1; }
+  .managed-user-summary dt { @apply font-mono text-[9px] uppercase text-slate-400; }
+  .managed-user-summary dd { @apply m-0 text-sm font-bold; }
+  .admin-secret { @apply m-4 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4; }
+  .admin-secret > div { @apply min-w-0 flex-1; }
+  .admin-secret p { @apply mb-1 mt-0 text-amber-700; }
+  .admin-secret code { @apply block overflow-auto whitespace-nowrap text-xs text-amber-900; }
+  .managed-key-list article { @apply flex items-center gap-4 border-b border-slate-100 p-5 max-[680px]:flex-wrap; }
+  .managed-key-list article > div { @apply min-w-0 flex-1; }
+  .managed-key-list article > div > div { @apply flex items-center gap-2; }
+  .managed-key-list h4 { @apply m-0; }
+  .managed-key-list code, .managed-key-list small { @apply mt-1.5 block; }
+  .managed-key-list code { @apply text-[11px] text-slate-600; }
+  .managed-key-list small { @apply text-[10px] text-slate-400; }
+  .managed-key-list nav { @apply flex gap-1.5; }
+  .managed-loading { @apply p-10 text-center text-xs text-slate-400; }
   .form-card, .profile-card { @apply max-w-[760px] p-6; }
   .form-card h3 { @apply text-[22px]; }
   .form-card label, .login-form label, .modal label { @apply my-5 grid gap-2.5 text-[10px] font-bold uppercase tracking-[.7px]; }
@@ -178,6 +270,32 @@
   .user-cell { @apply flex items-center gap-2.5; }
   .user-cell small { @apply mt-1 block text-slate-400; }
   .finance-grid { @apply grid-cols-3 max-[680px]:grid-cols-1; }
+  .profit-calculator { @apply mb-6 p-6; }
+  .profit-calculator-head { @apply flex items-center justify-between border-b border-line pb-5; }
+  .profit-calculator-head h2 { @apply my-1 text-2xl; }
+  .profit-calculator-head p:last-child { @apply text-sm text-muted; }
+  .profit-mode { @apply my-5 grid max-w-[520px] grid-cols-2 rounded-xl bg-slate-100 p-1; }
+  .profit-mode button { @apply rounded-lg border-0 bg-transparent px-4 py-2.5 text-xs font-bold text-muted; }
+  .profit-mode button.active { @apply bg-white text-navy shadow-sm; }
+  .profit-layout { @apply grid grid-cols-[1.25fr_.75fr] gap-6 max-[900px]:grid-cols-1; }
+  .profit-form { @apply rounded-2xl border border-line bg-slate-50 p-5; }
+  .profit-form label { @apply mb-4 grid gap-2 text-[10px] font-bold uppercase tracking-[.7px]; }
+  .profit-form input, .profit-form select { @apply h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal normal-case tracking-normal outline-none focus:border-accent focus:ring-3 focus:ring-orange-100; }
+  .selling-price { @apply mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50 p-3; }
+  .selling-price span { @apply mr-auto text-[10px] font-bold uppercase tracking-wider text-indigo-500; }
+  .selling-price b { @apply rounded-lg bg-white px-2.5 py-1.5 text-[10px] text-indigo-800; }
+  .profit-results { @apply grid content-start gap-2; }
+  .profit-results > div { @apply flex items-center justify-between rounded-xl border border-line bg-white p-4; }
+  .profit-results span { @apply text-xs text-muted; }
+  .profit-results strong { @apply text-lg text-navy; }
+  .profit-results .positive { @apply border-emerald-200 bg-emerald-50; }
+  .profit-results .positive strong { @apply text-emerald-700; }
+  .profit-results .negative { @apply border-red-200 bg-red-50; }
+  .profit-results .negative strong { @apply text-red-600; }
+  .profit-advice { @apply mt-2 flex items-center gap-2 rounded-xl p-3 text-xs font-bold; }
+  .profit-advice svg { @apply size-4; }
+  .profit-advice.good { @apply bg-emerald-100 text-emerald-700; }
+  .profit-advice.bad { @apply bg-red-100 text-red-700; }
   .router-status { @apply mb-4 flex items-center gap-4 p-[23px]; }
   .router-status div { @apply flex-1; }
   .router-status h2, .router-status p { @apply my-0.5; }
@@ -210,6 +328,63 @@
   .entitlements > span button { @apply grid border-0 bg-transparent p-0 text-slate-400; }
   .entitlements > span svg { @apply size-[11px]; }
   .entitlements select { @apply max-w-[130px]; }
+  .entitlement-actions { @apply mt-1 flex w-full flex-wrap items-center gap-1.5; }
+  .entitlement-actions select { @apply min-w-[145px] max-w-[180px]; }
+  .entitlement-actions .button.compact { @apply min-h-8 gap-1 px-2 py-1 text-[11px]; }
+  .entitlement-actions .button.compact svg { @apply size-3.5; }
+  .model-entitlement-summary { @apply flex min-w-[250px] items-center gap-3; }
+  .model-count { @apply grid min-w-11 place-items-center rounded-xl bg-indigo-50 px-2 py-1.5 text-indigo-700; }
+  .model-count b { @apply text-base leading-none; }
+  .model-count span { @apply mt-1 text-[9px] font-bold uppercase tracking-wider; }
+  .model-preview { @apply flex min-w-0 flex-1 flex-col gap-1; }
+  .model-preview > span { @apply max-w-[170px] truncate rounded-md bg-slate-100 px-2 py-1 font-mono text-[9px] text-slate-600; }
+  .model-preview > span.more { @apply w-fit bg-indigo-50 font-sans font-bold text-indigo-600; }
+  .model-preview small { @apply text-xs text-muted; }
+  .model-manager-modal { @apply w-[760px] max-w-[calc(100vw-32px)]; }
+  .model-manager-head { @apply flex items-start justify-between border-b border-line pb-4; }
+  .model-manager-head h2 { @apply mb-1; }
+  .model-manager-head p { @apply text-sm text-muted; }
+  .model-manager-toolbar { @apply my-4 flex flex-wrap items-center gap-2; }
+  .model-manager-toolbar .search { @apply min-w-[260px] flex-1; }
+  .model-picker-grid { @apply grid max-h-[430px] grid-cols-2 gap-2 overflow-y-auto pr-1 max-[650px]:grid-cols-1; }
+  .model-picker-grid label { @apply flex cursor-pointer items-center gap-3 rounded-xl border border-line bg-slate-50 p-3 transition hover:border-indigo-300 hover:bg-indigo-50/40; }
+  .model-picker-grid label.selected { @apply border-indigo-300 bg-indigo-50 ring-1 ring-indigo-100; }
+  .model-picker-grid input { @apply size-4 shrink-0 accent-indigo-600; }
+  .model-picker-grid label > span { @apply flex min-w-0 flex-1 flex-col; }
+  .model-picker-grid b { @apply truncate text-sm; }
+  .model-picker-grid small { @apply truncate font-mono text-[10px] text-muted; }
+  .model-picker-grid em { @apply rounded-md bg-white px-2 py-1 text-[9px] font-bold not-italic uppercase tracking-wide text-indigo-600; }
+  .confirm-modal { @apply w-[460px] max-w-[calc(100vw-32px)] text-center; }
+  .confirm-icon { @apply mx-auto mb-4 grid size-14 place-items-center rounded-2xl; }
+  .confirm-icon svg { @apply size-7; }
+  .confirm-icon.danger { @apply bg-red-50 text-red-500 ring-8 ring-red-50/50; }
+  .confirm-modal h2 { @apply mb-2 text-2xl; }
+  .confirm-description { @apply mx-auto max-w-[380px] text-sm leading-6 text-muted; }
+  .confirm-target { @apply my-5 flex items-center gap-3 rounded-xl border border-line bg-slate-50 p-3 text-left; }
+  .confirm-target > div { @apply flex min-w-0 flex-col; }
+  .confirm-target b { @apply text-sm; }
+  .confirm-target small { @apply truncate text-xs text-muted; }
+  .confirm-note { @apply flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-left text-xs leading-5 text-amber-800; }
+  .confirm-note svg { @apply mt-0.5 size-4 shrink-0; }
+  .confirm-modal .modal-actions { @apply mt-5 grid grid-cols-2; }
+  .confirm-modal .button.danger { @apply bg-red-500 text-white shadow-[0_8px_20px_#ef44442a] hover:bg-red-600; }
+  .bulk-pricing-modal { @apply w-[610px] max-w-[calc(100vw-32px)]; }
+  .bulk-pricing-head { @apply flex items-center gap-4 border-b border-line pb-5; }
+  .bulk-pricing-head .confirm-icon { @apply m-0 shrink-0; }
+  .confirm-icon.pricing { @apply bg-orange-50 text-accent ring-8 ring-orange-50/50; }
+  .bulk-pricing-head h2 { @apply mb-1 text-2xl; }
+  .bulk-pricing-head p:last-child { @apply text-sm text-muted; }
+  .bulk-scope { @apply my-5 flex items-center justify-between rounded-xl border border-indigo-100 bg-indigo-50/70 p-4; }
+  .bulk-scope > div { @apply flex flex-col; }
+  .bulk-scope span { @apply text-[9px] font-bold tracking-[1.4px] text-indigo-500; }
+  .bulk-scope strong { @apply mt-1 text-lg text-indigo-800; }
+  .bulk-scope small { @apply max-w-[260px] truncate rounded-full bg-white px-3 py-1.5 text-[10px] text-muted; }
+  .bulk-pricing-modal label small { @apply mt-[-5px] font-mono text-[10px] font-normal normal-case tracking-normal text-muted; }
+  .bulk-price-preview { @apply mb-4 grid grid-cols-2 gap-3; }
+  .bulk-price-preview > div { @apply flex flex-col rounded-xl border border-line bg-slate-50 p-4; }
+  .bulk-price-preview span { @apply text-[9px] font-bold tracking-[1.2px] text-muted; }
+  .bulk-price-preview b { @apply my-1 text-xl; }
+  .bulk-price-preview small { @apply text-[10px] text-muted; }
   .password-card { @apply mt-[18px]; }
   .success-text, .form-message { @apply text-xs text-emerald-700; }
   .form-columns { @apply grid grid-cols-2 gap-3 max-[680px]:grid-cols-1; }
@@ -267,6 +442,13 @@
   .login-form { @apply w-[min(400px,100%)]; }
   .login-form .icon-chip { @apply mb-7 bg-orange-50 text-accent; }
   .login-form h2 { @apply my-2 text-[32px] tracking-[-1px]; }
+  .auth-tabs { @apply my-6 grid grid-cols-2 rounded-xl bg-slate-200/70 p-1; }
+  .auth-tabs button { @apply rounded-lg border-0 bg-transparent py-2.5 text-xs font-bold text-muted transition; }
+  .auth-tabs button.active { @apply bg-white text-ink shadow-sm; }
+  .oauth-divider { @apply my-5 flex items-center gap-3 text-[10px] uppercase tracking-wider text-muted before:h-px before:flex-1 before:bg-line after:h-px after:flex-1 after:bg-line; }
+  .oauth-buttons { @apply grid grid-cols-2 gap-2; }
+  .oauth-buttons button { @apply flex min-h-11 items-center justify-center gap-2 rounded-[9px] border border-line bg-white text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50; }
+  .oauth-buttons b { @apply text-base text-indigo-600; }
   .form-error { @apply text-xs text-red-600; }
   .demo-accounts { @apply mt-[15px] flex gap-2.5; }
   .demo-accounts button { @apply border-0 bg-transparent text-[10px] text-slate-500 underline; }

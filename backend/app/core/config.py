@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173,http://localhost:8080"
     database_url: str = "sqlite:///./nexora.db"
     banking_webhook_api_key: str = "change-banking-webhook-key"
+    google_oauth_client_id: str = ""
+    google_oauth_client_secret: str = ""
+    oauth_public_url: str = "http://localhost:8080"
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property

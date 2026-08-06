@@ -8,17 +8,34 @@ export function AppShell() {
   const [open, setOpen] = useState(false);
   const [helpItem, setHelpItem] = useState<NavigationItem | null>(null);
   const { user, logout } = useAuth();
-  const items = navigation.filter((item) => user && item.roles.includes(user.role));
+  const userOrder = ['/dashboard', '/wallet', '/api-keys', '/tool-setup', '/models', '/logs', '/profile', '/settings'];
+  const adminOrder = ['/dashboard', '/admin/users', '/admin/user-api-keys', '/admin/finance', '/admin/banks', '/admin/providers', '/admin/routing-pools', '/admin/router', '/logs', '/admin/audit', '/profile', '/settings'];
+  const order = user?.role === 'super_admin' ? adminOrder : userOrder;
+  const hiddenForAdmin = new Set(['/wallet', '/api-keys']);
+  const items = navigation
+    .filter((item) => user && item.roles.includes(user.role) && !(user.role === 'super_admin' && hiddenForAdmin.has(item.path)))
+    .sort((a, b) => order.indexOf(a.path) - order.indexOf(b.path));
+  const accountItems = items.filter((item) => item.path === '/profile' || item.path === '/settings');
+  const workspaceItems = items.filter((item) => !accountItems.includes(item));
+  const renderItem = (item: NavigationItem) => {
+    const Icon = item.icon;
+    return (
+      <div className="nav-entry" key={item.path}>
+        <NavLink to={item.path} onClick={() => setOpen(false)}><Icon />{item.label}</NavLink>
+        <button className="nav-help" title={`Hướng dẫn ${item.label}`} onClick={() => setHelpItem(item)}><CircleHelp /></button>
+      </div>
+    );
+  };
 
   return (
     <div className="app-shell">
       <button className="mobile-menu" onClick={() => setOpen(true)}><Menu /></button>
       <aside className={`sidebar ${open ? 'open' : ''}`}>
         <div className="sidebar-head"><div className="brand"><span className="brand-mark"><Zap /></span><span>NEXORA<small>GATEWAY</small></span></div><button className="close-menu" onClick={() => setOpen(false)}><PanelLeftClose /></button></div>
-        <p className="nav-label">WORKSPACE</p>
-        <nav>{items.slice(0, -2).map((item) => { const Icon=item.icon; return <div className="nav-entry" key={item.path}><NavLink to={item.path} onClick={() => setOpen(false)}><Icon />{item.label}</NavLink><button className="nav-help" title={`Hướng dẫn ${item.label}`} onClick={()=>setHelpItem(item)}><CircleHelp/></button></div>; })}</nav>
+        <p className="nav-label">{user?.role === 'super_admin' ? 'ADMINISTRATION' : 'WORKSPACE'}</p>
+        <nav>{workspaceItems.map(renderItem)}</nav>
         <p className="nav-label">ACCOUNT</p>
-        <nav>{items.slice(-2).map((item) => { const Icon=item.icon; return <div className="nav-entry" key={item.path}><NavLink to={item.path} onClick={() => setOpen(false)}><Icon />{item.label}</NavLink><button className="nav-help" title={`Hướng dẫn ${item.label}`} onClick={()=>setHelpItem(item)}><CircleHelp/></button></div>; })}</nav>
+        <nav>{accountItems.map(renderItem)}</nav>
         <div className="sidebar-user"><span className="avatar">{user?.name.slice(0, 2).toUpperCase()}</span><div><b>{user?.name}</b><small>{user?.role === 'super_admin' ? 'SUPER ADMIN' : 'CLIENT'}</small></div><button onClick={logout} title="Dang xuat"><LogOut /></button></div>
       </aside>
       {open && <div className="backdrop" onClick={() => setOpen(false)} />}

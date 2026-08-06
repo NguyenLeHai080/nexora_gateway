@@ -21,6 +21,9 @@ services:
       NINE_ROUTER_PUBLIC_URL: ${NINE_ROUTER_PUBLIC_URL:-http://localhost:20128/v1}
       NINE_ROUTER_INTERNAL_KEY: ${NINE_ROUTER_INTERNAL_KEY:-}
       BANKING_WEBHOOK_API_KEY: ${BANKING_WEBHOOK_API_KEY:-change-banking-webhook-key}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      OAUTH_PUBLIC_URL: ${OAUTH_PUBLIC_URL:-http://localhost:8080}
     volumes:
       - nexora-data:/data
     depends_on:

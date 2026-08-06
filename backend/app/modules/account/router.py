@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.core.models import UsageLog, UserSetting
+from app.core.models import UsageLog, User, UserSetting
 from app.core.security import hash_password, verify_password
 
 router = APIRouter(tags=["Account"])
@@ -49,8 +49,7 @@ def change_password(payload: PasswordRequest, user=Depends(get_current_user), db
 
 @router.get("/logs")
 def usage_logs(user=Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict]:
-    query = select(UsageLog).order_by(UsageLog.created_at.desc()).limit(200)
+    query = select(UsageLog, User).join(User, User.id == UsageLog.user_id).order_by(UsageLog.created_at.desc()).limit(200)
     if user.role != "super_admin": query = query.where(UsageLog.user_id == user.id)
-    items = db.scalars(query).all()
-    return [{"id": item.id, "requestId": item.request_id, "model": item.model_id, "status": item.status, "inputTokens": item.input_tokens, "outputTokens": item.output_tokens, "cost": item.cost, "latencyMs": item.latency_ms, "createdAt": item.created_at.strftime("%d/%m/%Y %H:%M:%S")} for item in items]
-
+    rows = db.execute(query).all()
+    return [{"id": item.id, "requestId": item.request_id, "model": item.model_id, "status": item.status, "inputTokens": item.input_tokens, "outputTokens": item.output_tokens, "cost": item.cost, "latencyMs": item.latency_ms, "createdAt": item.created_at.strftime("%d/%m/%Y %H:%M:%S"), "userId": owner.id, "userName": owner.name, "userEmail": owner.email} for item, owner in rows]

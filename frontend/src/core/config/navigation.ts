@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Activity, Boxes, CircleDollarSign, Gauge, KeyRound, Landmark, Network, Route, ScrollText, Settings, ShieldCheck, UserRound, UsersRound, WalletCards } from 'lucide-react';
+import { Activity, Boxes, CircleDollarSign, Gauge, KeyRound, Landmark, Network, Route, ScrollText, Settings, ShieldCheck, TerminalSquare, UserRound, UsersRound, WalletCards } from 'lucide-react';
 import type { Role } from '../types';
 
 export interface NavigationItem {
@@ -11,6 +11,8 @@ export interface NavigationItem {
 }
 
 export const navigation: NavigationItem[] = [
+  { label: 'API key khách hàng', path: '/admin/user-api-keys', icon: KeyRound, roles: ['super_admin'], guide:{title:'API key theo tài khoản',description:'Quản lý khóa truy cập và quota riêng của từng khách hàng.',steps:['Chọn đúng tài khoản khách hàng.','Tạo hoặc điều chỉnh quota cho API key.','Khóa hoặc xóa key khi không còn sử dụng.']} },
+  { label: 'Cài đặt tool', path: '/tool-setup', icon: TerminalSquare, roles: ['user'], guide:{title:'Cài đặt công cụ',description:'Sinh lệnh cấu hình Claude Code hoặc Codex CLI qua Nexora Gateway.',steps:['Chọn công cụ và hệ điều hành.','Chọn API key hoạt động rồi dán secret.','Tạo, sao chép và chạy lệnh trong terminal.']} },
   { label: 'Tong quan', path: '/dashboard', icon: Gauge, roles: ['user', 'super_admin'], guide:{title:'Tổng quan',description:'Theo dõi nhanh tình trạng vận hành và mức sử dụng.',steps:['Xem các chỉ số tổng hợp.','Dùng biểu đồ để nhận biết tải tăng.','Mở menu chi tiết để kiểm tra nguyên nhân.']} },
   { label: 'Vi & giao dich', path: '/wallet', icon: WalletCards, roles: ['user', 'super_admin'], guide:{title:'Ví & giao dịch',description:'Kiểm tra số dư và lịch sử cộng/trừ tiền.',steps:['Kiểm tra số dư hiện tại.','Đối chiếu từng giao dịch.','Báo quản trị khi có bất thường.']} },
   { label: 'API Keys', path: '/api-keys', icon: KeyRound, roles: ['user', 'super_admin'], guide:{title:'API Keys',description:'Tạo và thu hồi khóa gọi Nexora Gateway.',steps:['Tạo và sao chép khóa mới.','Gửi khóa bằng Authorization: Bearer.','Thu hồi khóa không còn dùng.']} },

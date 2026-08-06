@@ -37,8 +37,8 @@ def bank_json(item: BankAccount, db: Session | None = None) -> dict:
 
 def automatic_token_quota(db:Session,user_id:int,amount:int) -> int:
     prices=db.execute(select(ModelCatalog.input_price,ModelCatalog.output_price).join(UserModel,UserModel.model_id==ModelCatalog.id).where(UserModel.user_id==user_id,ModelCatalog.enabled.is_(True))).all()
-    positive=[min(input_price,output_price) for input_price,output_price in prices if input_price>0 and output_price>0]
-    reference=min(positive) if positive else 1500
+    positive=[max(input_price,output_price) for input_price,output_price in prices if input_price>0 and output_price>0]
+    reference=max(positive) if positive else 3500
     return math.floor(amount*1_000_000/reference)
 
 def normalized_transfer_content(value:str) -> str:
@@ -108,8 +108,7 @@ def create_deposit(payload:DepositRequest,user:User=Depends(get_current_user),db
     if not bank or not bank.enabled:raise HTTPException(404,"Bank account unavailable")
     raw_code=f"NX{user.id}{secrets.token_hex(3).upper()}"
     code=f"SEVQR {raw_code}" if bank.bank_code in {"ICB", "VIETINBANK"} else raw_code
-    tokens=automatic_token_quota(db,user.id,payload.amount)
-    item=DepositOrder(user_id=user.id,bank_account_id=bank.id,code=code,expected_amount=payload.amount,token_amount=tokens,expires_at=datetime.utcnow()+timedelta(minutes=30));db.add(item);db.commit();db.refresh(item);return order_json(item,bank)
+    item=DepositOrder(user_id=user.id,bank_account_id=bank.id,code=code,expected_amount=payload.amount,token_amount=0,expires_at=datetime.utcnow()+timedelta(minutes=30));db.add(item);db.commit();db.refresh(item);return order_json(item,bank)
 
 @router.post("/webhook/sepay")
 @router.post("/banking/webhooks/sepay")
@@ -126,7 +125,7 @@ def sepay_webhook(payload:dict,authorization:str=Header(default=""),db:Session=D
     if not order:db.commit();return {"success":True,"matched":False}
     bank=db.get(BankAccount,order.bank_account_id)
     if account and re.sub(r"\D","",bank.account_number)!=account:db.commit();return {"success":True,"matched":False}
-    user=db.get(User,order.user_id);tokens=automatic_token_quota(db,user.id,amount);user.balance+=amount;user.token_quota+=tokens;order.status="paid";order.paid_amount=amount;order.token_amount=tokens;order.external_transaction_id=external_id;order.paid_at=datetime.utcnow();event.status="credited";db.add(Transaction(user_id=user.id,type="credit",amount=amount,description=f"Bank deposit {order.code}"))
+    user=db.get(User,order.user_id);user.balance+=amount;order.status="paid";order.paid_amount=amount;order.token_amount=0;order.external_transaction_id=external_id;order.paid_at=datetime.utcnow();event.status="credited";db.add(Transaction(user_id=user.id,type="credit",amount=amount,description=f"Bank deposit {order.code}"))
     try:db.commit()
     except IntegrityError:db.rollback();return {"success":True,"duplicate":True}
     return {"success":True,"matched":True,"credited":True,"amount":amount,"tokens":tokens}
