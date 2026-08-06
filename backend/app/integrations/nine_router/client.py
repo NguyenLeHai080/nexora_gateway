@@ -40,9 +40,13 @@ class NineRouterClient:
 
     async def dashboard_request(self, method: str, path: str, payload: dict[str, Any] | None = None) -> Any:
         async with httpx.AsyncClient(base_url=self.dashboard_base_url, timeout=15) as client:
-            login = await client.post("/api/auth/login", json={"password": settings.nine_router_dashboard_password})
-            login.raise_for_status()
-            response = await client.request(method, path, json=payload)
+            headers: dict[str, str] = {}
+            if settings.nine_router_internal_key:
+                headers["X-Nexora-Internal-Key"] = settings.nine_router_internal_key
+            else:
+                login = await client.post("/api/auth/login", json={"password": settings.nine_router_dashboard_password})
+                login.raise_for_status()
+            response = await client.request(method, path, json=payload, headers=headers)
             response.raise_for_status()
             return response.json() if response.content else None
 
