@@ -111,6 +111,7 @@ def create_deposit(payload:DepositRequest,user:User=Depends(get_current_user),db
     tokens=automatic_token_quota(db,user.id,payload.amount)
     item=DepositOrder(user_id=user.id,bank_account_id=bank.id,code=code,expected_amount=payload.amount,token_amount=tokens,expires_at=datetime.utcnow()+timedelta(minutes=30));db.add(item);db.commit();db.refresh(item);return order_json(item,bank)
 
+@router.post("/webhook/sepay")
 @router.post("/banking/webhooks/sepay")
 def sepay_webhook(payload:dict,authorization:str=Header(default=""),db:Session=Depends(get_db)) -> dict:
     if not secrets.compare_digest(authorization,f"Apikey {settings.banking_webhook_api_key}"):raise HTTPException(401,"Invalid webhook credential")
