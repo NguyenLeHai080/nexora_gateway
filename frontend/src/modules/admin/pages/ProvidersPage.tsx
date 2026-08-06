@@ -16,6 +16,7 @@ const emptyProvider = { provider:'', name:'', apiKey:'', priority:1 };
 
 function apiError(error: unknown): string {
   if (axios.isAxiosError(error)) return error.response?.data?.detail || error.message;
+  if (error instanceof Error) return error.message;
   return 'Loi khong xac dinh';
 }
 
@@ -36,7 +37,7 @@ export function ProvidersPage() {
   const toggle=useMutation({mutationFn:(item:RouterConnection)=>apiClient.patch(`/admin/router/connections/${encodeURIComponent(item.id)}/status`,{is_active:!item.isActive}),onSuccess:refresh});
   const test=useMutation({mutationFn:async(id:string)=>{setTestingId(id);const {data}=await apiClient.post<ConnectionTestResult>(`/admin/router/connections/${encodeURIComponent(id)}/test`);return{id,data};},onSuccess:({id,data})=>{setTestResults(previous=>({...previous,[id]:{ok:data.valid,message:data.valid?(data.refreshed?'Hop le - token da duoc lam moi':'Ket noi hop le'):data.error||'Ket noi khong hop le'}}));refresh();},onError:(error,id)=>setTestResults(previous=>({...previous,[id]:{ok:false,message:apiError(error)}})),onSettled:()=>setTestingId('')});
   const remove=useMutation({mutationFn:(id:string)=>apiClient.delete(`/admin/router/connections/${encodeURIComponent(id)}`),onSuccess:refresh});
-  const openOauth=useMutation({mutationFn:async()=>{const {data}=await apiClient.post<{url:string}>('/admin/router/provider-wizard',{provider:oauthProvider});const target=new URL(data.url);target.searchParams.set('embed','1');const ssoPath=`/router-embed${target.pathname}${target.search}`;const response=await fetch(ssoPath,{credentials:'include'});if(!response.ok)throw new Error('Khong the khoi tao phien OAuth');return `/router-embed/dashboard/providers/${encodeURIComponent(oauthProvider)}?source=nexora`;},onSuccess:(url)=>{setWizardUrl(url);setAddingOauth(false);setOauthProvider('');}});
+  const openOauth=useMutation({mutationFn:async()=>{const {data}=await apiClient.post<{url:string}>('/admin/router/provider-wizard',{provider:oauthProvider});const target=new URL(data.url);target.searchParams.set('embed','1');const ssoPath=`/router-embed${target.pathname}${target.search}`;const response=await fetch(ssoPath,{credentials:'include'});if(!response.ok){let detail='';try{const body=await response.json();detail=body.error||body.detail||'';}catch{detail=await response.text().catch(()=> '');}throw new Error(detail||`Khong the khoi tao phien OAuth (HTTP ${response.status})`);}return `/router-embed/dashboard/providers/${encodeURIComponent(oauthProvider)}?source=nexora`;},onSuccess:(url)=>{setWizardUrl(url);setAddingOauth(false);setOauthProvider('');}});
   const pagination=usePagination(connections,10);
   const selected=options.find(item=>item.id===form.provider);
   function submit(event:FormEvent){event.preventDefault();create.mutate();}
