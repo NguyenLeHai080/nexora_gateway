@@ -45,6 +45,12 @@ class BalanceAdjustmentRequest(BaseModel):
     description: str = Field(min_length=3, max_length=255)
 
 
+class TokenAdjustmentRequest(BaseModel):
+    operation: str = Field(pattern="^(credit|debit|set)$")
+    amount: int = Field(ge=0)
+    description: str = Field(min_length=3, max_length=255)
+
+
 class GrantModelRequest(BaseModel):
     model_id: str
 
@@ -188,6 +194,24 @@ def adjust_balance(user_id: int, payload: BalanceAdjustmentRequest, admin: User 
     direction = 1 if payload.type == "credit" else -1
     user.balance += direction * payload.amount; user.token_quota = max(user.token_used, user.token_quota + direction * payload.token_amount)
     db.add(Transaction(user_id=user.id, type=payload.type, amount=payload.amount, description=payload.description)); audit(db, admin.id, f"wallet.{payload.type}", f"user:{user.id}", str(payload.amount)); db.commit()
+    return serialize_user(user)
+
+
+@router.post("/users/{user_id}/tokens")
+def adjust_tokens(user_id: int, payload: TokenAdjustmentRequest, admin: User = Depends(require_super_admin), db: Session = Depends(get_db)) -> dict:
+    user = users_repository.get(db, user_id)
+    if not user or user.role != "user": raise HTTPException(404, "User not found")
+    before = user.token_quota
+    if payload.operation == "credit":
+        user.token_quota += payload.amount
+    elif payload.operation == "debit":
+        if user.token_quota - payload.amount < user.token_used: raise HTTPException(400, "Token quota cannot be lower than tokens already used")
+        user.token_quota -= payload.amount
+    else:
+        if payload.amount < user.token_used: raise HTTPException(400, "Token quota cannot be lower than tokens already used")
+        user.token_quota = payload.amount
+    audit(db, admin.id, f"tokens.{payload.operation}", f"user:{user.id}", f"{before} -> {user.token_quota}; {payload.description}")
+    db.commit(); db.refresh(user)
     return serialize_user(user)
 
 
