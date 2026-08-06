@@ -41,6 +41,14 @@ def automatic_token_quota(db:Session,user_id:int,amount:int) -> int:
     reference=min(positive) if positive else 1500
     return math.floor(amount*1_000_000/reference)
 
+def normalized_transfer_content(value:str) -> str:
+    """Bank descriptions may insert spaces/punctuation into the requested code."""
+    return re.sub(r"[^A-Z0-9]", "", value.upper())
+
+def deposit_match_code(order:DepositOrder) -> str:
+    match=re.search(r"NX[A-Z0-9]+", order.code.upper())
+    return normalized_transfer_content(match.group(0) if match else order.code)
+
 def order_json(item: DepositOrder, bank: BankAccount) -> dict:
     qr = f"https://img.vietqr.io/image/{quote(bank.bank_code)}-{quote(bank.account_number)}-compact2.png?amount={item.expected_amount}&addInfo={quote(item.code)}&accountName={quote(bank.account_name)}"
     return {"id":item.id,"code":item.code,"expectedAmount":item.expected_amount,"paidAmount":item.paid_amount,"tokenAmount":item.token_amount,"status":item.status,"expiresAt":item.expires_at.isoformat(),"createdAt":item.created_at.isoformat(),"qrUrl":qr,"bank":bank_json(bank)}
@@ -106,18 +114,17 @@ def create_deposit(payload:DepositRequest,user:User=Depends(get_current_user),db
 @router.post("/banking/webhooks/sepay")
 def sepay_webhook(payload:dict,authorization:str=Header(default=""),db:Session=Depends(get_db)) -> dict:
     if not secrets.compare_digest(authorization,f"Apikey {settings.banking_webhook_api_key}"):raise HTTPException(401,"Invalid webhook credential")
-    external_id=str(payload.get("id") or payload.get("referenceCode") or "").strip();amount=int(payload.get("transferAmount") or 0);content=str(payload.get("content") or payload.get("description") or "").upper();account=re.sub(r"\D","",str(payload.get("accountNumber") or ""));transfer_type=str(payload.get("transferType") or "").lower()
+    external_id=str(payload.get("id") or payload.get("referenceCode") or "").strip();amount=int(payload.get("transferAmount") or 0);content=normalized_transfer_content(str(payload.get("content") or payload.get("description") or ""));account=re.sub(r"\D","",str(payload.get("accountNumber") or ""));transfer_type=str(payload.get("transferType") or "").lower()
     if not external_id:raise HTTPException(400,"Missing transaction id")
     if db.scalar(select(BankWebhookEvent).where(BankWebhookEvent.external_id==external_id)):return {"success":True,"duplicate":True}
     event=BankWebhookEvent(external_id=external_id,payload_json=payload,status="ignored");db.add(event)
     if transfer_type not in {"in","credit"} or amount<=0:db.commit();return {"success":True,"matched":False}
-    order=db.scalar(select(DepositOrder).where(DepositOrder.status=="pending",DepositOrder.expires_at>=datetime.utcnow()).order_by(DepositOrder.id.desc()))
-    candidates=db.scalars(select(DepositOrder).where(DepositOrder.status=="pending",DepositOrder.expires_at>=datetime.utcnow())).all()
-    order=next((x for x in candidates if x.code.upper() in content),None)
+    reconciliation_since=datetime.utcnow()-timedelta(days=7)
+    candidates=db.scalars(select(DepositOrder).where(DepositOrder.status=="pending",DepositOrder.created_at>=reconciliation_since).order_by(DepositOrder.id.desc())).all()
+    order=next((x for x in candidates if deposit_match_code(x) in content),None)
     if not order:db.commit();return {"success":True,"matched":False}
     bank=db.get(BankAccount,order.bank_account_id)
     if account and re.sub(r"\D","",bank.account_number)!=account:db.commit();return {"success":True,"matched":False}
-    if amount<order.expected_amount:event.status="underpaid";db.commit();return {"success":True,"matched":True,"credited":False,"reason":"underpaid"}
     user=db.get(User,order.user_id);tokens=automatic_token_quota(db,user.id,amount);user.balance+=amount;user.token_quota+=tokens;order.status="paid";order.paid_amount=amount;order.token_amount=tokens;order.external_transaction_id=external_id;order.paid_at=datetime.utcnow();event.status="credited";db.add(Transaction(user_id=user.id,type="credit",amount=amount,description=f"Bank deposit {order.code}"))
     try:db.commit()
     except IntegrityError:db.rollback();return {"success":True,"duplicate":True}
