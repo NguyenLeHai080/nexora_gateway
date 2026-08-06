@@ -56,7 +56,11 @@ class NineRouterClient:
 
     @property
     def gateway_headers(self) -> dict[str, str]:
-        return {"Authorization": f"Bearer {settings.nine_router_api_key}"}
+        if settings.nine_router_api_key:
+            return {"Authorization": f"Bearer {settings.nine_router_api_key}"}
+        if settings.nine_router_internal_key:
+            return {"X-Nexora-Internal-Key": settings.nine_router_internal_key}
+        return {}
 
 
 nine_router = NineRouterClient()

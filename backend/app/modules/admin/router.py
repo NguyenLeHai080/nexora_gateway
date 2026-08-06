@@ -346,15 +346,10 @@ async def test_router_connection(connection_id: str, _: User = Depends(require_s
 
 @router.post("/router/sync")
 async def sync_router_models(_: User = Depends(require_super_admin), db: Session = Depends(get_db)) -> dict:
-    if not settings.nine_router_api_key:
-        raise HTTPException(503, "9Router API key is not configured")
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            response = await client.get(f"{settings.nine_router_base_url.rstrip('/')}/models", headers={"Authorization": f"Bearer {settings.nine_router_api_key}"})
-        response.raise_for_status()
+        upstream = await nine_router.models()
     except httpx.HTTPError as exc:
         raise HTTPException(502, f"9Router models sync failed: {exc}") from exc
-    upstream = response.json().get("data", [])
     synced = 0
     for item in upstream:
         model_id = item.get("id")
