@@ -78,7 +78,13 @@ export async function GET(request, { params }) {
       const meta = {};
       searchParams.forEach((value, key) => { if (!reservedParams.has(key)) meta[key] = value; });
       const authData = await generateAuthData(provider, redirectUri, Object.keys(meta).length ? meta : undefined);
-      return NextResponse.json(authData);
+      return NextResponse.json(authData, {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      });
     }
 
     if (action === "start-proxy") {

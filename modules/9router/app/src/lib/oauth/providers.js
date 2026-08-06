@@ -1570,6 +1570,11 @@ export async function generateAuthData(providerName, redirectUri, meta) {
   const config = provider.prepareConfig
     ? await provider.prepareConfig(provider.config, meta || {})
     : provider.config;
+  if (providerName === "antigravity" && !config?.clientId) {
+    throw new Error(
+      "Antigravity OAuth client is not configured. Set ANTIGRAVITY_OAUTH_CLIENT_ID and restart 9Router."
+    );
+  }
   const { codeVerifier, codeChallenge, state } = generatePKCE(provider.pkceVerifierBytes);
 
   let authUrl;

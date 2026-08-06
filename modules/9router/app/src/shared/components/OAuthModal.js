@@ -238,10 +238,11 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
       // Build authorize URL first to get codeVerifier/state for codex server-side mode
       const authorizeUrl = new URL(`/api/oauth/${provider}/authorize`, window.location.origin);
       authorizeUrl.searchParams.set("redirect_uri", redirectUri);
+      authorizeUrl.searchParams.set("_ts", Date.now().toString());
       if (oauthMeta) {
         Object.entries(oauthMeta).forEach(([k, v]) => { if (v) authorizeUrl.searchParams.set(k, v); });
       }
-      const res = await fetch(authorizeUrl.toString());
+      const res = await fetch(authorizeUrl.toString(), { cache: "no-store" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
