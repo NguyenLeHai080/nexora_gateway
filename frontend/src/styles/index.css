@@ -419,13 +419,23 @@
   .tokenx-warning div { @apply grid gap-1; }
   .tokenx-warning span { @apply text-xs; }
   .tokenx-stats { @apply mb-5; }
+  .tokenx-metric { @apply min-h-[170px] overflow-hidden shadow-[0_8px_28px_#10243d08]; }
+  .tokenx-metric::after { content:""; @apply absolute -right-10 -top-10 size-28 rounded-full bg-slate-100/80; }
+  .tokenx-metric .metric-icon, .tokenx-metric p, .tokenx-metric strong, .tokenx-metric small { @apply relative z-[1]; }
+  .tokenx-metric.balance .metric-icon { @apply bg-emerald-50 text-emerald-600; }
+  .tokenx-metric.keys .metric-icon { @apply bg-indigo-50 text-indigo-600; }
+  .tokenx-metric.accuracy .metric-icon { @apply bg-sky-50 text-sky-600; }
+  .tokenx-metric.margin .metric-icon { @apply bg-orange-50 text-accent; }
   .tokenx-grid { @apply grid grid-cols-[minmax(0,1.6fr)_minmax(300px,.8fr)] gap-5 max-[1050px]:grid-cols-1; }
-  .tokenx-reconcile { @apply h-fit; }
+  .tokenx-grid > .table-card { @apply min-h-[390px]; }
+  .tokenx-reconcile { @apply h-fit overflow-hidden; }
+  .tokenx-reconcile .table-section-heading > svg { @apply size-5 text-indigo-500; }
   .tokenx-reconcile dl { @apply my-4 grid gap-0; }
   .tokenx-reconcile dl div { @apply flex items-center justify-between border-b border-line py-3 text-sm; }
   .tokenx-reconcile dt { @apply text-muted; }
   .tokenx-reconcile dd { @apply m-0 font-semibold text-navy; }
   .full-button { @apply w-full justify-center; }
+  .tokenx-reconcile .full-button { @apply rounded-none border-x-0 border-b-0 py-3.5; }
   .connection-picker { @apply my-5 grid gap-2 rounded-xl border border-line p-4; }
   .connection-picker legend { @apply px-2 text-[10px] font-bold uppercase tracking-[.7px]; }
   .connection-picker label { @apply my-0! flex! cursor-pointer items-center gap-3 rounded-lg bg-slate-50 p-3; }
