@@ -1,8 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Activity, CircleDollarSign, Cloud, KeyRound, Link2, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Activity, CircleDollarSign, Cloud, KeyRound, Link2, Plus, RefreshCw, ScrollText, WalletCards } from 'lucide-react';
 import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
 import { apiClient } from '../../../core/api/client';
-import { Badge } from '../../../shared/components/Badge';
 import { PageHeader } from '../../../shared/components/PageHeader';
 import { formatVnd } from '../../../shared/utils/format';
 
@@ -24,11 +23,9 @@ function numberFrom(value: unknown, keys: string[]): number | null {
 const pick=(row:Json,...keys:string[])=>keys.map(key=>row[key]).find(value=>value!==undefined&&value!==null);
 
 export function TokenXPage() {
-  const qc=useQueryClient(); const [keyModal,setKeyModal]=useState(false); const [keyName,setKeyName]=useState('Nexora Gateway'); const [secret,setSecret]=useState(''); const [poolModal,setPoolModal]=useState(false); const [pool,setPool]=useState(initialPool);
+  const [poolModal,setPoolModal]=useState(false); const [pool,setPool]=useState(initialPool);
   const query=useQuery({queryKey:['tokenx-overview'],queryFn:async()=>(await apiClient.get<Overview>('/admin/tokenx/overview')).data,refetchInterval:30000});
   const data=query.data; const usage=data?.reconciliation??{}; const apiKeys=useMemo(()=>rows(data?.apiKeys),[data?.apiKeys]); const balance=numberFrom(data?.wallet,['balance','available_balance','wallet_balance']);
-  const createKey=useMutation({mutationFn:async()=>(await apiClient.post<Json>('/admin/tokenx/api-keys',{name:keyName})).data,onSuccess:r=>{setSecret(String(pick(r,'secret','key','api_key','token')??''));qc.invalidateQueries({queryKey:['tokenx-overview']});}});
-  const revoke=useMutation({mutationFn:(id:string)=>apiClient.delete(`/admin/tokenx/api-keys/${encodeURIComponent(id)}`),onSuccess:()=>qc.invalidateQueries({queryKey:['tokenx-overview']})});
   const mapPool=useMutation({mutationFn:()=>apiClient.post('/admin/tokenx/pools',pool),onSuccess:()=>{setPoolModal(false);setPool(initialPool);}});
   const accuracy=pick(usage,'tokenAccuracyPercent');
   return <div className="page tokenx-page">
@@ -41,10 +38,9 @@ export function TokenXPage() {
       <article className="metric-card tokenx-metric margin"><span className="metric-icon"><Activity/></span><p>LỢI NHUẬN GỘP 24H</p><strong>{pick(usage,'grossMargin')==null?'—':formatVnd(Number(pick(usage,'grossMargin')))}</strong><small>Doanh thu bán ra trừ chi phí nguồn</small></article>
     </section>
     <section className="tokenx-grid">
-      <article className="card table-card"><div className="table-section-heading"><div><p className="eyebrow">UPSTREAM ACCESS</p><h3>API keys TokenX</h3></div><button className="button ghost" onClick={()=>setKeyModal(true)}><Plus/> Tạo key</button></div><div className="table-wrap"><table><thead><tr><th>Tên</th><th>ID / prefix</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{apiKeys.length?apiKeys.map((key,index)=>{const id=String(pick(key,'id','uuid')??'');return <tr key={id||index}><td><b>{String(pick(key,'name','label')??`Key ${index+1}`)}</b></td><td><code>{String(pick(key,'prefix','key_prefix','id')??'—')}</code></td><td><Badge tone="success">ACTIVE</Badge></td><td><button className="icon-button danger-text" disabled={!id} onClick={()=>id&&confirm('Thu hồi API key này?')&&revoke.mutate(id)}><Trash2/></button></td></tr>}):<tr><td colSpan={4}>Chưa có API key hoặc chưa tải được dữ liệu.</td></tr>}</tbody></table></div></article>
+      <article className="card tokenx-map-card"><div><p className="eyebrow">INTEGRATED MANAGEMENT</p><h3>TokenX đã được phân bổ vào hệ thống</h3><p>Trang này chỉ giữ cấu hình kết nối và routing pool. Các nghiệp vụ được quản lý tại đúng module chuyên trách.</p></div><nav><a href="/admin/user-api-keys"><KeyRound/><span><b>API key & TokenX</b><small>Tạo, thu hồi và kiểm tra khóa nguồn</small></span></a><a href="/admin/finance"><WalletCards/><span><b>Dòng tiền & lợi nhuận</b><small>Số dư, chi phí và lịch sử ví nguồn</small></span></a><a href="/logs"><ScrollText/><span><b>Nhật ký sử dụng</b><small>Request Nexora và TokenX upstream</small></span></a></nav></article>
       <article className="card tokenx-reconcile"><div className="table-section-heading"><div><p className="eyebrow">RECONCILIATION / 24H</p><h3>Đối soát sử dụng</h3></div><Link2/></div><dl><div><dt>Request Nexora</dt><dd>{Number(pick(usage,'localRequests')??0).toLocaleString('vi-VN')}</dd></div><div><dt>Token Nexora</dt><dd>{Number(pick(usage,'localTokens')??0).toLocaleString('vi-VN')}</dd></div><div><dt>Token TokenX</dt><dd>{pick(usage,'upstreamTokens')==null?'Chưa có':Number(pick(usage,'upstreamTokens')).toLocaleString('vi-VN')}</dd></div><div><dt>Doanh thu</dt><dd>{formatVnd(Number(pick(usage,'localRevenue')??0))}</dd></div><div><dt>Chi phí upstream</dt><dd>{pick(usage,'upstreamCost')==null?'Chưa có':formatVnd(Number(pick(usage,'upstreamCost')))}</dd></div></dl><button className="button primary full-button" onClick={()=>setPoolModal(true)}><Plus/> Map model vào pool</button></article>
     </section>
-    {keyModal&&<div className="modal-layer" onClick={()=>setKeyModal(false)}><form className="modal" onClick={e=>e.stopPropagation()} onSubmit={e=>{e.preventDefault();createKey.mutate();}}><p className="eyebrow">TOKENX API KEY</p><h2>Tạo khóa upstream</h2><label>Tên khóa<input value={keyName} onChange={e=>setKeyName(e.target.value)} minLength={2} required/></label>{secret&&<div className="new-secret"><div><p>Chỉ hiển thị một lần</p><code>{secret}</code></div><button type="button" className="button ghost" onClick={()=>navigator.clipboard.writeText(secret)}>Sao chép</button></div>}<div className="modal-actions"><button type="button" className="button ghost" onClick={()=>setKeyModal(false)}>Đóng</button><button className="button primary" disabled={createKey.isPending}>Tạo khóa</button></div></form></div>}
     {poolModal&&<PoolModal pool={pool} setPool={setPool} close={()=>setPoolModal(false)} submit={()=>mapPool.mutate()} pending={mapPool.isPending} error={mapPool.isError}/>} 
   </div>;
 }

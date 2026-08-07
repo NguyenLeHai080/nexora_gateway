@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowDownLeft, ArrowUpRight, Calculator, Landmark, TrendingUp } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Calculator, Landmark, Server, TrendingUp, WalletCards } from 'lucide-react';
 import { apiClient } from '../../../core/api/client';
 import type { Model } from '../../../core/types';
 import { PageHeader } from '../../../shared/components/PageHeader';
@@ -12,11 +12,17 @@ import { TableEmpty } from '../../../shared/components/TableEmpty';
 
 interface Finance { revenue: number; gatewayCost: number; profit: number; pending: number }
 interface AdminTransaction { id:number;userName:string;userEmail:string;type:'credit'|'debit';amount:number;description:string;createdAt:string }
+type Json=Record<string,unknown>;
+function remoteRows(value:unknown):Json[]{if(Array.isArray(value))return value as Json[];if(value&&typeof value==='object')for(const key of ['data','items','transactions','results']){const row=(value as Json)[key];if(Array.isArray(row))return row as Json[];}return[];}
+function remoteNumber(value:unknown,names:string[]):number{if(!value||typeof value!=='object')return 0;for(const [key,item] of Object.entries(value as Json))if(names.includes(key.toLowerCase())&&Number.isFinite(Number(item)))return Number(item);for(const item of Object.values(value as Json)){const found=remoteNumber(item,names);if(found)return found;}return 0;}
+const remoteValue=(row:Json,...keys:string[])=>keys.map(key=>row[key]).find(value=>value!==undefined&&value!==null);
 
 export function FinancePage() {
   const { data } = useQuery({ queryKey: ['finance'], queryFn: async () => (await apiClient.get<Finance>('/admin/finance')).data });
   const {data:transactions=[]}=useQuery({queryKey:['admin-transactions'],queryFn:async()=>(await apiClient.get<AdminTransaction[]>('/admin/transactions')).data});
   const {data:models=[]}=useQuery({queryKey:['admin-models'],queryFn:async()=>(await apiClient.get<Model[]>('/admin/router/models')).data});
+  const {data:tokenx}=useQuery({queryKey:['tokenx-finance'],queryFn:async()=>(await apiClient.get<Json>('/admin/tokenx/overview')).data,refetchInterval:30000});
+  const {data:tokenxTransactions}=useQuery({queryKey:['tokenx-transactions'],queryFn:async()=>(await apiClient.get('/admin/tokenx/transactions')).data,refetchInterval:30000});
   const [mode,setMode]=useState<'subscription'|'api'>('subscription');
   const [modelId,setModelId]=useState('gpt-5.5');
   const [capital,setCapital]=useState(50000);
@@ -43,7 +49,7 @@ export function FinancePage() {
 
   return <div className="page">
     <PageHeader eyebrow="SUPER ADMIN / FINANCE" title="Dòng tiền & lợi nhuận" description="Theo dõi ledger và dự phóng lời lãi theo từng model."/>
-    <section className="metric-grid finance-grid"><FinanceMetric icon={<ArrowDownLeft/>} label="Tiền khách nạp" value={formatVnd(data?.revenue ?? 0)}/><FinanceMetric icon={<ArrowUpRight/>} label="Chi phí gateway" value={formatVnd(data?.gatewayCost ?? 0)}/><FinanceMetric icon={<Landmark/>} label="Lợi nhuận gộp" value={formatVnd(data?.profit ?? 0)}/></section>
+    <section className="metric-grid finance-grid"><FinanceMetric icon={<ArrowDownLeft/>} label="Tiền khách nạp" value={formatVnd(data?.revenue ?? 0)}/><FinanceMetric icon={<ArrowUpRight/>} label="Chi phí gateway" value={formatVnd(data?.gatewayCost ?? 0)}/><FinanceMetric icon={<Landmark/>} label="Lợi nhuận gộp" value={formatVnd(data?.profit ?? 0)}/><FinanceMetric icon={<WalletCards/>} label="Số dư TokenX" value={formatVnd(remoteNumber(tokenx?.wallet,['balance','available_balance','wallet_balance']))}/><FinanceMetric icon={<Server/>} label="Chi phí TokenX" value={formatVnd(Number((tokenx?.reconciliation as Json)?.upstreamCost??0))}/><FinanceMetric icon={<TrendingUp/>} label="Lãi gộp TokenX" value={formatVnd(Number((tokenx?.reconciliation as Json)?.grossMargin??0))}/></section>
 
     <section className="profit-calculator card">
       <div className="profit-calculator-head"><div><p className="eyebrow">PROFIT SIMULATOR</p><h2>Bảng tính vốn và lợi nhuận</h2><p>Tính theo giá bán thật trong Model Catalog.</p></div><span className="router-icon"><Calculator/></span></div>
@@ -67,6 +73,7 @@ export function FinancePage() {
     </section>
 
     <article className="card table-card"><div className="table-section-heading"><div><p className="eyebrow">IMMUTABLE LEDGER</p><h3>Lịch sử dòng tiền</h3></div><span>{transactions.length} giao dịch</span></div>{transactions.length?<div className="table-wrap"><table><thead><tr><th>Thời gian</th><th>Tài khoản</th><th>Loại</th><th>Số tiền</th><th>Nội dung</th></tr></thead><tbody>{pagination.paginatedItems.map(tx=><tr key={tx.id}><td>{tx.createdAt}</td><td><b>{tx.userName}</b><small className="block">{tx.userEmail}</small></td><td><Badge tone={tx.type==='credit'?'success':'warning'}>{tx.type.toUpperCase()}</Badge></td><td className={tx.type}>{tx.type==='credit'?'+':'-'}{formatVnd(tx.amount)}</td><td>{tx.description}</td></tr>)}</tbody></table></div>:<TableEmpty/>}<TablePagination page={pagination.page} pageSize={pagination.pageSize} totalItems={pagination.totalItems} totalPages={pagination.totalPages} onPageChange={pagination.setPage} onPageSizeChange={pagination.changePageSize}/></article>
+    <article className="card table-card tokenx-ledger"><div className="table-section-heading"><div><p className="eyebrow">TOKENX / UPSTREAM LEDGER</p><h3>Lịch sử ví nguồn TokenX</h3></div><span>{remoteRows(tokenxTransactions).length} giao dịch</span></div>{remoteRows(tokenxTransactions).length?<div className="table-wrap"><table><thead><tr><th>Thời gian</th><th>Mã giao dịch</th><th>Loại</th><th>Số tiền</th><th>Nội dung</th></tr></thead><tbody>{remoteRows(tokenxTransactions).map((tx,index)=><tr key={String(remoteValue(tx,'id','transaction_id')??index)}><td>{String(remoteValue(tx,'created_at','createdAt','timestamp')??'—')}</td><td><code>{String(remoteValue(tx,'id','transaction_id','reference')??'—')}</code></td><td><Badge tone={String(remoteValue(tx,'type','direction')??'debit').includes('credit')?'success':'warning'}>{String(remoteValue(tx,'type','direction')??'USAGE').toUpperCase()}</Badge></td><td>{formatVnd(Number(remoteValue(tx,'amount','value','cost')??0))}</td><td>{String(remoteValue(tx,'description','note','reason')??'TokenX')}</td></tr>)}</tbody></table></div>:<TableEmpty message="TokenX chưa có giao dịch hoặc chưa tải được dữ liệu."/>}</article>
   </div>;
 }
 

@@ -90,6 +90,30 @@ async def remote_snapshot() -> dict:
     return result
 
 
+async def remote_resource(path: str) -> Any:
+    if not tokenx.configured:
+        raise HTTPException(503, "TokenX credentials are not configured")
+    try:
+        return redact(await tokenx.request("GET", path))
+    except TokenXError as exc:
+        raise tokenx_error(exc) from exc
+
+
+@router.get("/api-keys")
+async def list_api_keys(_: User = Depends(require_super_admin)) -> Any:
+    return await remote_resource("api-keys")
+
+
+@router.get("/transactions")
+async def list_transactions(_: User = Depends(require_super_admin)) -> Any:
+    return await remote_resource("wallet/transactions?page=1&page_size=100")
+
+
+@router.get("/request-logs")
+async def list_request_logs(_: User = Depends(require_super_admin)) -> Any:
+    return await remote_resource("request-logs?page=1&page_size=200")
+
+
 @router.get("/overview")
 async def overview(
     _: User = Depends(require_super_admin), db: Session = Depends(get_db)

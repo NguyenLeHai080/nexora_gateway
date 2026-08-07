@@ -206,6 +206,18 @@
   .pricing-list article > b { @apply text-right font-mono text-[11px] font-medium; }
   .pricing-empty { @apply py-10 text-center text-xs text-slate-400; }
   .admin-key-layout { @apply grid grid-cols-[340px_minmax(0,1fr)] items-start gap-5 max-[900px]:grid-cols-1; }
+  .source-tabs { @apply mb-5 flex w-fit gap-1 rounded-xl border border-line bg-white p-1 shadow-sm max-[600px]:w-full; }
+  .source-tabs button { @apply flex min-h-10 items-center gap-2 rounded-lg border-0 bg-transparent px-4 text-xs font-bold text-muted transition max-[600px]:flex-1 max-[600px]:justify-center; }
+  .source-tabs button.active { @apply bg-navy text-white shadow-md; }
+  .source-tabs button svg { @apply size-4; }
+  .source-tabs .badge { @apply ml-1; }
+  .upstream-key-panel { @apply min-h-[430px] overflow-hidden; }
+  .upstream-key-head { @apply flex items-end justify-between gap-6 border-b border-line p-6 max-[800px]:items-stretch max-[800px]:flex-col; }
+  .upstream-key-head h3 { @apply mb-1 mt-1; }
+  .upstream-key-head p:last-child { @apply m-0 max-w-[620px] text-xs leading-5 text-muted; }
+  .upstream-key-head form { @apply flex min-w-[390px] gap-2 max-[800px]:min-w-0 max-[560px]:flex-col; }
+  .upstream-key-head input { @apply min-w-0 flex-1; }
+  .key-icon.upstream { @apply bg-sky-50 text-sky-600; }
   .account-picker { @apply overflow-hidden; }
   .account-picker-head { @apply border-b border-slate-200 p-5; }
   .account-picker-head p, .account-picker-head h3 { @apply m-0; }
@@ -271,6 +283,7 @@
   .user-cell small { @apply mt-1 block text-slate-400; }
   .finance-grid { @apply grid-cols-3 max-[680px]:grid-cols-1; }
   .profit-calculator { @apply mb-6 p-6; }
+  .tokenx-ledger { @apply mt-6; }
   .profit-calculator-head { @apply flex items-center justify-between border-b border-line pb-5; }
   .profit-calculator-head h2 { @apply my-1 text-2xl; }
   .profit-calculator-head p:last-child { @apply text-sm text-muted; }
@@ -428,6 +441,15 @@
   .tokenx-metric.margin .metric-icon { @apply bg-orange-50 text-accent; }
   .tokenx-grid { @apply grid grid-cols-[minmax(0,1.6fr)_minmax(300px,.8fr)] gap-5 max-[1050px]:grid-cols-1; }
   .tokenx-grid > .table-card { @apply min-h-[390px]; }
+  .tokenx-map-card { @apply min-h-[390px] p-6; }
+  .tokenx-map-card > div { @apply border-b border-line pb-5; }
+  .tokenx-map-card h3 { @apply mb-2 mt-1 text-xl; }
+  .tokenx-map-card > div > p:last-child { @apply m-0 max-w-[680px] text-sm leading-6 text-muted; }
+  .tokenx-map-card nav { @apply mt-5 grid gap-3; }
+  .tokenx-map-card nav a { @apply flex items-center gap-4 rounded-xl border border-line bg-slate-50 p-4 text-navy no-underline transition hover:border-indigo-200 hover:bg-indigo-50/50; }
+  .tokenx-map-card nav a > svg { @apply size-5 text-indigo-500; }
+  .tokenx-map-card nav span { @apply grid gap-1; }
+  .tokenx-map-card nav small { @apply text-xs text-muted; }
   .tokenx-reconcile { @apply h-fit overflow-hidden; }
   .tokenx-reconcile .table-section-heading > svg { @apply size-5 text-indigo-500; }
   .tokenx-reconcile dl { @apply my-4 grid gap-0; }
