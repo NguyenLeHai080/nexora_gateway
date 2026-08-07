@@ -92,7 +92,13 @@ class TokenXClient:
             raise TokenXError(502, "TokenX API key has no identifier")
         secret = await self.request("GET", f"api-keys/{key_id}/secret")
         if isinstance(secret, dict):
-            secret = secret.get("secret") or secret.get("key") or secret.get("api_key") or secret.get("token")
+            secret = (
+                secret.get("raw_key")
+                or secret.get("secret")
+                or secret.get("key")
+                or secret.get("api_key")
+                or secret.get("token")
+            )
         if not isinstance(secret, str) or not secret:
             raise TokenXError(502, "TokenX returned no gateway API key secret")
         self._gateway_key = secret
