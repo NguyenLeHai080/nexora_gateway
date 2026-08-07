@@ -18,6 +18,7 @@ import { AuditPage } from '../modules/admin/pages/AuditPage';
 import { RoutingPoolsPage } from '../modules/admin/pages/RoutingPoolsPage';
 import { BankAccountsPage } from '../modules/admin/pages/BankAccountsPage';
 import { UserApiKeysPage } from '../modules/admin/pages/UserApiKeysPage';
+import { TokenXPage } from '../modules/admin/pages/TokenXPage';
 
 function OAuthCallbackRelay() {
   const params = new URLSearchParams(window.location.search);
@@ -66,7 +67,7 @@ export function App() {
     <Route path="/login" element={<LoginPage/>}/>
     <Route element={<ProtectedRoute/>}><Route element={<AppShell/>}>
       <Route path="/dashboard" element={<DashboardPage/>}/><Route path="/wallet" element={<WalletPage/>}/><Route path="/api-keys" element={<ApiKeysPage/>}/><Route path="/tool-setup" element={<ToolSetupPage/>}/><Route path="/models" element={<ModelsPage/>}/><Route path="/logs" element={<LogsPage/>}/><Route path="/profile" element={<ProfilePage/>}/><Route path="/settings" element={<SettingsPage/>}/>
-      <Route element={<ProtectedRoute roles={['super_admin']}/> }><Route path="/admin/users" element={<UsersPage/>}/><Route path="/admin/user-api-keys" element={<UserApiKeysPage/>}/><Route path="/admin/finance" element={<FinancePage/>}/><Route path="/admin/banks" element={<BankAccountsPage/>}/><Route path="/admin/providers" element={<ProvidersPage/>}/><Route path="/admin/routing-pools" element={<RoutingPoolsPage/>}/><Route path="/admin/router" element={<RouterPage/>}/><Route path="/admin/audit" element={<AuditPage/>}/></Route>
+      <Route element={<ProtectedRoute roles={['super_admin']}/> }><Route path="/admin/users" element={<UsersPage/>}/><Route path="/admin/user-api-keys" element={<UserApiKeysPage/>}/><Route path="/admin/finance" element={<FinancePage/>}/><Route path="/admin/banks" element={<BankAccountsPage/>}/><Route path="/admin/providers" element={<ProvidersPage/>}/><Route path="/admin/routing-pools" element={<RoutingPoolsPage/>}/><Route path="/admin/tokenx" element={<TokenXPage/>}/><Route path="/admin/router" element={<RouterPage/>}/><Route path="/admin/audit" element={<AuditPage/>}/></Route>
     </Route></Route>
     <Route path="*" element={<Navigate to="/dashboard" replace/>}/>
   </Routes>;

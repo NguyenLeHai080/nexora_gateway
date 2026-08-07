@@ -24,6 +24,11 @@ services:
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
       OAUTH_PUBLIC_URL: ${OAUTH_PUBLIC_URL:-http://localhost:8080}
+      TOKENX_API_BASE_URL: ${TOKENX_API_BASE_URL:-https://api.leeh.dev/api/v1}
+      TOKENX_GATEWAY_URL: ${TOKENX_GATEWAY_URL:-https://api.leeh.dev/v1}
+      TOKENX_USERNAME: ${TOKENX_USERNAME:-}
+      TOKENX_PASSWORD: ${TOKENX_PASSWORD:-}
+      TOKENX_API_KEY: ${TOKENX_API_KEY:-}
     volumes:
       - nexora-data:/data
     depends_on:
