@@ -1,0 +1,41 @@
+services:
+  router:
+    build:
+      context: ./app
+      args:
+        NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:20128}
+    image: ${NINE_ROUTER_IMAGE:-nexora-9router:local}
+    restart: unless-stopped
+    ports:
+      - "${NINE_ROUTER_PORT:-20128}:20128"
+      - "127.0.0.1:1455:1455"
+      - "127.0.0.1:56121:56121"
+    volumes:
+      - 9router-data:/app/data
+    env_file:
+      - .env
+    environment:
+      DATA_DIR: /app/data
+      PORT: "20128"
+      HOSTNAME: "0.0.0.0"
+      NODE_ENV: production
+      HEADROOM_URL: http://headroom:8787
+    depends_on:
+      - headroom
+    networks:
+      - nexora-internal
+
+  headroom:
+    image: ghcr.io/chopratejas/headroom:latest
+    restart: unless-stopped
+    networks:
+      - nexora-internal
+
+volumes:
+  9router-data:
+    external: true
+    name: ${NINE_ROUTER_VOLUME:-9router-data}
+
+networks:
+  nexora-internal:
+    name: nexora-internal

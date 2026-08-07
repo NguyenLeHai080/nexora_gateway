@@ -1,0 +1,87 @@
+services:
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "${NEXORA_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [nexora]
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: sqlite:////data/nexora.db
+      NINE_ROUTER_BASE_URL: http://router:20128/v1
+      NINE_ROUTER_PUBLIC_URL: ${NINE_ROUTER_PUBLIC_URL:-http://localhost:20128/v1}
+      NINE_ROUTER_INTERNAL_KEY: ${NINE_ROUTER_INTERNAL_KEY:-}
+      BANKING_WEBHOOK_API_KEY: ${BANKING_WEBHOOK_API_KEY:-change-banking-webhook-key}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      OAUTH_PUBLIC_URL: ${OAUTH_PUBLIC_URL:-http://localhost:8080}
+    volumes:
+      - nexora-data:/data
+    depends_on:
+      router:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [nexora]
+
+  router:
+    build:
+      context: ./modules/9router/app
+      args:
+        NEXT_PUBLIC_BASE_URL: ${NINE_ROUTER_ORIGIN:-http://localhost:20128}
+    image: ${NINE_ROUTER_IMAGE:-9router-local:latest}
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATA_DIR: /app/data
+      PORT: "20128"
+      HOSTNAME: "0.0.0.0"
+      NODE_ENV: production
+      HEADROOM_URL: http://headroom:8787
+      BASE_URL: ${NINE_ROUTER_ORIGIN:-http://localhost:20128}
+      NEXT_PUBLIC_BASE_URL: ${NINE_ROUTER_ORIGIN:-http://localhost:20128}
+      NEXORA_INTERNAL_KEY: ${NINE_ROUTER_INTERNAL_KEY:-}
+      NEXORA_ADMIN_URL: ${NEXORA_ADMIN_URL:-https://meridian.nexoratech.com.vn/admin/providers}
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production}
+      ANTIGRAVITY_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      ANTIGRAVITY_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+    ports:
+      - "127.0.0.1:${NINE_ROUTER_PORT:-20128}:20128"
+    volumes:
+      - 9router-data:/app/data
+    depends_on: [headroom]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:20128/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+    networks: [nexora]
+
+  headroom:
+    image: ghcr.io/chopratejas/headroom:latest
+    restart: unless-stopped
+    networks: [nexora]
+
+volumes:
+  nexora-data:
+  9router-data:
+    external: true
+    name: 9router-data
+
+networks:
+  nexora:
+    driver: bridge

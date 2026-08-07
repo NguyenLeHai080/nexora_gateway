@@ -1,0 +1,8 @@
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../../../core/api/client';
+import { PageHeader } from '../../../shared/components/PageHeader';
+import { usePagination } from '../../../shared/hooks/usePagination';
+import { TablePagination } from '../../../shared/components/TablePagination';
+import { TableEmpty } from '../../../shared/components/TableEmpty';
+interface Audit {id:number;actorId:number;action:string;target:string;details:string;createdAt:string}
+export function AuditPage(){const{data=[]}=useQuery({queryKey:['audit-logs'],queryFn:async()=>(await apiClient.get<Audit[]>('/admin/audit-logs')).data});const pagination=usePagination(data,10);return <div className="page"><PageHeader eyebrow="SECURITY / AUDIT" title="Nhat ky quan tri" description="Luu vet cac thao tac thay doi du lieu quan trong."/><article className="card table-card"><div className="table-section-heading"><div><p className="eyebrow">AUDIT TRAIL</p><h3>Hoat dong quan tri</h3></div><span>{data.length} su kien</span></div>{data.length?<div className="table-wrap"><table><thead><tr><th>Thoi gian</th><th>Actor</th><th>Hanh dong</th><th>Doi tuong</th><th>Chi tiet</th></tr></thead><tbody>{pagination.paginatedItems.map(item=><tr key={item.id}><td>{item.createdAt}</td><td>Admin #{item.actorId}</td><td><code>{item.action}</code></td><td>{item.target}</td><td>{item.details||'—'}</td></tr>)}</tbody></table></div>:<TableEmpty/>}<TablePagination page={pagination.page} pageSize={pagination.pageSize} totalItems={pagination.totalItems} totalPages={pagination.totalPages} onPageChange={pagination.setPage} onPageSizeChange={pagination.changePageSize}/></article></div>}
