@@ -19,9 +19,49 @@ import { RoutingPoolsPage } from '../modules/admin/pages/RoutingPoolsPage';
 import { BankAccountsPage } from '../modules/admin/pages/BankAccountsPage';
 import { UserApiKeysPage } from '../modules/admin/pages/UserApiKeysPage';
 
+function OAuthCallbackRelay() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const state = params.get('state');
+  const error = params.get('error');
+  const errorDescription = params.get('error_description');
+  const isCallback = Boolean(state && (code || error));
+
+  useEffect(() => {
+    if (!isCallback) return;
+    const callbackData = {
+      code,
+      state,
+      error,
+      errorDescription,
+      fullUrl: window.location.href,
+    };
+    window.opener?.postMessage(
+      { type: 'oauth_callback', data: callbackData },
+      window.location.origin,
+    );
+    localStorage.setItem(
+      'oauth_callback',
+      JSON.stringify({ ...callbackData, timestamp: Date.now() }),
+    );
+    window.history.replaceState(null, '', '/');
+    window.setTimeout(() => window.close(), 300);
+  }, [code, error, errorDescription, isCallback, state]);
+
+  if (!isCallback) return null;
+  return (
+    <main className="oauth-callback-relay" aria-live="polite">
+      <p>Đang hoàn tất kết nối Antigravity…</p>
+    </main>
+  );
+}
+
 export function App() {
   const { restore } = useAuth();
   useEffect(() => { void restore(); }, [restore]);
+  const relay = <OAuthCallbackRelay />;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('state') && (params.get('code') || params.get('error'))) return relay;
   return <Routes>
     <Route path="/login" element={<LoginPage/>}/>
     <Route element={<ProtectedRoute/>}><Route element={<AppShell/>}>

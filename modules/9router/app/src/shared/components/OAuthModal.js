@@ -232,10 +232,9 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
       } else if (provider === "xai") {
         redirectUri = "http://127.0.0.1:56121/callback";
       } else if (provider === "antigravity") {
-        const embeddedPrefix = window.location.pathname.startsWith("/router-embed/")
-          ? "/router-embed"
-          : "";
-        redirectUri = `${window.location.origin}${embeddedPrefix}/callback`;
+        // The Nexora Google OAuth client already authorizes the public app
+        // origin. Nexora relays the returned code/state to this embedded modal.
+        redirectUri = window.location.origin;
       } else {
         redirectUri = `http://localhost:${appPort}/callback`;
       }
