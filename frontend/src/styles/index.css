@@ -220,6 +220,8 @@
   .key-icon.upstream { @apply bg-sky-50 text-sky-600; }
   .tokenx-key-modal { @apply w-[min(560px,100%)]; }
   .tokenx-key-modal label small { @apply mt-[-4px] text-[10px] font-normal normal-case tracking-normal text-muted; }
+  .quota-adjustment { @apply grid gap-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-4; }
+  .quota-adjustment > small { @apply text-xs text-muted; }
   .account-picker { @apply overflow-hidden; }
   .account-picker-head { @apply border-b border-slate-200 p-5; }
   .account-picker-head p, .account-picker-head h3 { @apply m-0; }
@@ -278,6 +280,9 @@
   .empty-state { @apply p-11 text-center text-slate-500; }
   .empty-state h3 { @apply text-ink; }
   .toolbar { @apply mb-3.5 flex items-center justify-between max-[680px]:flex-col max-[680px]:items-start max-[680px]:gap-2.5; }
+  .log-filter-bar { @apply mb-5 flex flex-wrap gap-3 rounded-xl border border-line bg-white p-3 shadow-sm; }
+  .log-filter-bar .search { @apply min-w-[280px] flex-1; }
+  .log-filter-bar select { @apply min-w-[150px] rounded-[10px] border border-line bg-white px-3 text-sm; }
   .search { @apply flex items-center gap-1.5 rounded-[10px] border border-line bg-white px-3 max-[680px]:w-full; }
   .search svg { @apply w-4 text-slate-400; }
   .search input { @apply h-[42px] w-[260px] border-0 outline-none max-[680px]:w-full; }
@@ -475,6 +480,14 @@
   .tokenx-reconcile dd { @apply m-0 font-semibold text-navy; }
   .full-button { @apply w-full justify-center; }
   .tokenx-reconcile .full-button { @apply rounded-none border-x-0 border-b-0 py-3.5; }
+  .tokenx-detail-grid { @apply mt-5 grid grid-cols-[minmax(280px,.75fr)_minmax(0,1.4fr)] gap-5 max-[950px]:grid-cols-1; }
+  .tokenx-account-card { @apply p-6; }
+  .tokenx-account-card dl { @apply my-4 grid gap-0; }
+  .tokenx-account-card dl div { @apply flex justify-between border-b border-line py-3 text-sm; }
+  .tokenx-account-card dt { @apply text-muted; }
+  .tokenx-account-card dd { @apply m-0 font-semibold; }
+  .tokenx-account-card > p { @apply mb-0 text-xs leading-5 text-muted; }
+  .tokenx-empty-copy { @apply p-6 text-sm text-muted; }
   .connection-picker { @apply my-5 grid gap-2 rounded-xl border border-line p-4; }
   .connection-picker legend { @apply px-2 text-[10px] font-bold uppercase tracking-[.7px]; }
   .connection-picker label { @apply my-0! flex! cursor-pointer items-center gap-3 rounded-lg bg-slate-50 p-3; }

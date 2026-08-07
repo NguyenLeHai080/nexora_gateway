@@ -147,6 +147,19 @@ class BankWebhookEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class TokenXFundingAllocation(Base):
+    __tablename__ = "tokenx_funding_allocations"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    deposit_order_id: Mapped[int] = mapped_column(ForeignKey("deposit_orders.id"), unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    gross_amount: Mapped[int] = mapped_column(BigInteger)
+    reserve_amount: Mapped[int] = mapped_column(BigInteger)
+    owner_amount: Mapped[int] = mapped_column(BigInteger)
+    reserve_percent: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(30), default="reserved", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
 class BankQrImage(Base):
     __tablename__ = "bank_qr_images"
     bank_account_id: Mapped[int] = mapped_column(ForeignKey("bank_accounts.id", ondelete="CASCADE"), primary_key=True)
