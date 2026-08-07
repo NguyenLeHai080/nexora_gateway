@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     google_oauth_client_id: str = ""
     google_oauth_client_secret: str = ""
     oauth_public_url: str = "http://localhost:8080"
+    tokenx_api_base_url: str = "https://api.leeh.dev/api/v1"
+    tokenx_gateway_url: str = "https://api.leeh.dev/v1"
+    tokenx_username: str = ""
+    tokenx_password: str = ""
+    tokenx_api_key: str = ""
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property

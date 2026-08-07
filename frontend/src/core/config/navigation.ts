@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Activity, Boxes, CircleDollarSign, Gauge, KeyRound, Landmark, Network, Route, ScrollText, Settings, ShieldCheck, TerminalSquare, UserRound, UsersRound, WalletCards } from 'lucide-react';
+import { Activity, Boxes, CircleDollarSign, Cloud, Gauge, KeyRound, Landmark, Network, Route, ScrollText, Settings, ShieldCheck, TerminalSquare, UserRound, UsersRound, WalletCards } from 'lucide-react';
 import type { Role } from '../types';
 
 export interface NavigationItem {
@@ -27,4 +27,5 @@ export const navigation: NavigationItem[] = [
   { label: 'Audit quan tri', path: '/admin/audit', icon: ShieldCheck, roles: ['super_admin'], guide:{title:'Audit quản trị',description:'Theo dõi thay đổi do quản trị viên thực hiện.',steps:['Tìm theo tài khoản hoặc đối tượng.','Đối chiếu thời gian.','Dùng nhật ký để điều tra sự cố.']} },
   { label: 'Ho so', path: '/profile', icon: UserRound, roles: ['user', 'super_admin'], guide:{title:'Hồ sơ',description:'Xem thông tin nhận diện và vai trò hiện tại.',steps:['Kiểm tra email và vai trò.','Cập nhật thông tin được phép.','Bảo vệ thông tin đăng nhập.']} },
   { label: 'Cai dat', path: '/settings', icon: Settings, roles: ['user', 'super_admin'], guide:{title:'Cài đặt',description:'Thay đổi thiết lập cá nhân và bảo mật.',steps:['Cập nhật mật khẩu định kỳ.','Kiểm tra trước khi lưu.','Đăng nhập lại nếu phiên được làm mới.']} },
+  { label: 'TokenX upstream', path: '/admin/tokenx', icon: Cloud, roles: ['super_admin'], guide:{title:'TokenX upstream',description:'Quản lý ví, API key, model pool và đối soát dữ liệu TokenX.',steps:['Kiểm tra số dư và kết nối upstream.','Map model TokenX vào routing pool.','Theo dõi độ khớp token và lợi nhuận 24 giờ.']} },
 ];

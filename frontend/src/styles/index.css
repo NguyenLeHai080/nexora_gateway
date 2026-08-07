@@ -414,6 +414,18 @@
   .guide-modal li { @apply flex items-start gap-3 rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-600; }
   .guide-modal li span { @apply grid size-6 shrink-0 place-items-center rounded-full bg-navy font-mono text-[10px] font-bold text-white; }
   .routing-pool-modal { @apply max-h-[92vh] w-[min(620px,100%)] overflow-y-auto; }
+  .tokenx-warning { @apply mb-5 flex items-center gap-4 border-amber-200 bg-amber-50 text-amber-900; }
+  .tokenx-warning svg { @apply size-6 shrink-0; }
+  .tokenx-warning div { @apply grid gap-1; }
+  .tokenx-warning span { @apply text-xs; }
+  .tokenx-stats { @apply mb-5; }
+  .tokenx-grid { @apply grid grid-cols-[minmax(0,1.6fr)_minmax(300px,.8fr)] gap-5 max-[1050px]:grid-cols-1; }
+  .tokenx-reconcile { @apply h-fit; }
+  .tokenx-reconcile dl { @apply my-4 grid gap-0; }
+  .tokenx-reconcile dl div { @apply flex items-center justify-between border-b border-line py-3 text-sm; }
+  .tokenx-reconcile dt { @apply text-muted; }
+  .tokenx-reconcile dd { @apply m-0 font-semibold text-navy; }
+  .full-button { @apply w-full justify-center; }
   .connection-picker { @apply my-5 grid gap-2 rounded-xl border border-line p-4; }
   .connection-picker legend { @apply px-2 text-[10px] font-bold uppercase tracking-[.7px]; }
   .connection-picker label { @apply my-0! flex! cursor-pointer items-center gap-3 rounded-lg bg-slate-50 p-3; }

@@ -24,6 +24,8 @@ from app.core.models import (
 )
 from app.core.security import hash_api_secret
 from app.modules.gateway.routing import routing_capacity
+from app.integrations.tokenx import tokenx
+from app.integrations.tokenx.client import TokenXError
 
 router = APIRouter(prefix="/v1", tags=["OpenAI-compatible Gateway"])
 logger = logging.getLogger(__name__)
@@ -85,6 +87,40 @@ def upstream_model_id(model_id: str) -> str:
     return model_id
 
 
+def uses_tokenx(pool: RoutingPool | None) -> bool:
+    return bool(pool and pool.provider.lower() == "tokenx")
+
+
+def require_upstream_credentials(pool: RoutingPool | None) -> None:
+    if uses_tokenx(pool):
+        if not settings.tokenx_api_key and not tokenx.configured:
+            raise HTTPException(503, "TokenX credentials are not configured")
+        return
+    if not settings.nine_router_api_key and not settings.nine_router_internal_key:
+        raise HTTPException(503, "9Router credentials are not configured")
+
+
+def request_upstream(pool: RoutingPool | None, path: str) -> str:
+    base = settings.tokenx_gateway_url if uses_tokenx(pool) else settings.nine_router_base_url
+    return f"{base.rstrip('/')}/{path.lstrip('/')}"
+
+
+async def request_headers(pool: RoutingPool | None, extra: dict[str, str] | None = None) -> dict[str, str]:
+    if uses_tokenx(pool):
+        try:
+            key = await tokenx.gateway_api_key()
+        except TokenXError as exc:
+            raise HTTPException(exc.status_code, str(exc)) from exc
+        return {**(extra or {}), "Authorization": f"Bearer {key}"}
+    return upstream_headers(extra)
+
+
+def request_model_id(pool: RoutingPool | None, model_id: str) -> str:
+    if uses_tokenx(pool):
+        return model_id.removeprefix("tx/")
+    return upstream_model_id(model_id)
+
+
 def authenticate_api_key(
     authorization: str = Header(default=""),
     x_api_key: str = Header(default="", alias="x-api-key"),
@@ -138,21 +174,21 @@ async def chat_completions(
     if user.token_quota > 0 and user.token_used >= user.token_quota:
         raise HTTPException(402, "Token quota exhausted")
     ensure_funded(user, payload, model)
-    if not settings.nine_router_api_key and not settings.nine_router_internal_key:
-        raise HTTPException(503, "9Router credentials are not configured")
     pool = db.scalar(
         select(RoutingPool).where(RoutingPool.model_id == model_id, RoutingPool.enabled.is_(True))
     )
+    require_upstream_credentials(pool)
     lease = await routing_capacity.acquire(pool, user.id) if pool else None
     started = time.perf_counter()
     request_id = f"req_{uuid.uuid4().hex[:20]}"
-    upstream_payload = {**payload, "model": upstream_model_id(model_id)}
+    upstream_payload = {**payload, "model": request_model_id(pool, model_id)}
     try:
         async with httpx.AsyncClient(timeout=120) as client:
             response = await client.post(
-                f"{settings.nine_router_base_url.rstrip('/')}/chat/completions",
+                request_upstream(pool, "chat/completions"),
                 json=upstream_payload,
-                headers=upstream_headers(
+                headers=await request_headers(
+                    pool,
                     {
                         "X-Nexora-User": str(user.id),
                         "X-Nexora-Pool": str(pool.id) if pool else "",
@@ -219,15 +255,15 @@ async def anthropic_messages(
     if user.token_quota > 0 and user.token_used >= user.token_quota:
         raise HTTPException(402, "Token quota exhausted")
     ensure_funded(user, payload, model)
-    if not settings.nine_router_api_key and not settings.nine_router_internal_key:
-        raise HTTPException(503, "9Router credentials are not configured")
     pool = db.scalar(
         select(RoutingPool).where(RoutingPool.model_id == model_id, RoutingPool.enabled.is_(True))
     )
+    require_upstream_credentials(pool)
     lease = await routing_capacity.acquire(pool, user.id) if pool else None
     started = time.perf_counter()
     request_id = f"req_{uuid.uuid4().hex[:20]}"
-    headers = upstream_headers(
+    headers = await request_headers(
+        pool,
         {
             "anthropic-version": anthropic_version,
             "X-Nexora-User": str(user.id),
@@ -240,8 +276,8 @@ async def anthropic_messages(
     client = httpx.AsyncClient(timeout=httpx.Timeout(300, connect=30))
     request = client.build_request(
         "POST",
-        f"{settings.nine_router_base_url.rstrip('/')}/messages",
-        json={**payload, "model": upstream_model_id(model_id)},
+        request_upstream(pool, "messages"),
+        json={**payload, "model": request_model_id(pool, model_id)},
         headers=headers,
     )
     try:
@@ -526,17 +562,20 @@ async def anthropic_count_tokens(
     model = db.get(ModelCatalog, model_id)
     if not model or not model.enabled or not db.get(UserModel, (user.id, model_id)):
         raise HTTPException(403, "Model is not assigned to this account")
-    if not settings.nine_router_api_key and not settings.nine_router_internal_key:
-        raise HTTPException(503, "9Router credentials are not configured")
-    headers = upstream_headers(
+    pool = db.scalar(
+        select(RoutingPool).where(RoutingPool.model_id == model_id, RoutingPool.enabled.is_(True))
+    )
+    require_upstream_credentials(pool)
+    headers = await request_headers(
+        pool,
         {"anthropic-version": anthropic_version, "X-Nexora-User": str(user.id)}
     )
     if anthropic_beta:
         headers["anthropic-beta"] = anthropic_beta
     async with httpx.AsyncClient(timeout=60) as client:
         upstream = await client.post(
-            f"{settings.nine_router_base_url.rstrip('/')}/messages/count_tokens",
-            json={**payload, "model": upstream_model_id(model_id)},
+            request_upstream(pool, "messages/count_tokens"),
+            json={**payload, "model": request_model_id(pool, model_id)},
             headers=headers,
         )
     if upstream.is_error:
