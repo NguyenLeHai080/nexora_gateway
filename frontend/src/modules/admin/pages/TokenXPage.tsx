@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Activity, CircleDollarSign, Cloud, KeyRound, Link2, Plus, RefreshCw, ScrollText, WalletCards } from 'lucide-react';
+import { Activity, CircleDollarSign, Cloud, KeyRound, Link2, Plus, RefreshCw, ScrollText, UserRound, WalletCards } from 'lucide-react';
 import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
 import { apiClient } from '../../../core/api/client';
 import { PageHeader } from '../../../shared/components/PageHeader';
@@ -25,7 +25,8 @@ const pick=(row:Json,...keys:string[])=>keys.map(key=>row[key]).find(value=>valu
 export function TokenXPage() {
   const [poolModal,setPoolModal]=useState(false); const [pool,setPool]=useState(initialPool);
   const query=useQuery({queryKey:['tokenx-overview'],queryFn:async()=>(await apiClient.get<Overview>('/admin/tokenx/overview')).data,refetchInterval:30000});
-  const data=query.data; const usage=data?.reconciliation??{}; const apiKeys=useMemo(()=>rows(data?.apiKeys),[data?.apiKeys]); const balance=numberFrom(data?.wallet,['balance','available_balance','wallet_balance']);
+  const pricingQuery=useQuery({queryKey:['tokenx-pricing-rules'],queryFn:async()=>(await apiClient.get('/admin/tokenx/pricing-rules')).data,refetchInterval:60000});
+  const data=query.data; const usage=data?.reconciliation??{}; const apiKeys=useMemo(()=>rows(data?.apiKeys),[data?.apiKeys]); const pricing=useMemo(()=>rows(pricingQuery.data),[pricingQuery.data]); const account=(data?.account&&typeof data.account==='object'?data.account:{}) as Json; const balance=numberFrom(data?.wallet,['balance','available_balance','wallet_balance']);
   const mapPool=useMutation({mutationFn:()=>apiClient.post('/admin/tokenx/pools',pool),onSuccess:()=>{setPoolModal(false);setPool(initialPool);}});
   const accuracy=pick(usage,'tokenAccuracyPercent');
   return <div className="page tokenx-page">
@@ -40,6 +41,10 @@ export function TokenXPage() {
     <section className="tokenx-grid">
       <article className="card tokenx-map-card"><div><p className="eyebrow">INTEGRATED MANAGEMENT</p><h3>TokenX đã được phân bổ vào hệ thống</h3><p>Trang này chỉ giữ cấu hình kết nối và routing pool. Các nghiệp vụ được quản lý tại đúng module chuyên trách.</p></div><nav><a href="/admin/user-api-keys"><KeyRound/><span><b>API key & TokenX</b><small>Tạo, thu hồi và kiểm tra khóa nguồn</small></span></a><a href="/admin/finance"><WalletCards/><span><b>Dòng tiền & lợi nhuận</b><small>Số dư, chi phí và lịch sử ví nguồn</small></span></a><a href="/logs"><ScrollText/><span><b>Nhật ký sử dụng</b><small>Request Nexora và TokenX upstream</small></span></a></nav></article>
       <article className="card tokenx-reconcile"><div className="table-section-heading"><div><p className="eyebrow">RECONCILIATION / 24H</p><h3>Đối soát sử dụng</h3></div><Link2/></div><dl><div><dt>Request Nexora</dt><dd>{Number(pick(usage,'localRequests')??0).toLocaleString('vi-VN')}</dd></div><div><dt>Token Nexora</dt><dd>{Number(pick(usage,'localTokens')??0).toLocaleString('vi-VN')}</dd></div><div><dt>Token TokenX</dt><dd>{pick(usage,'upstreamTokens')==null?'Chưa có':Number(pick(usage,'upstreamTokens')).toLocaleString('vi-VN')}</dd></div><div><dt>Doanh thu</dt><dd>{formatVnd(Number(pick(usage,'localRevenue')??0))}</dd></div><div><dt>Chi phí upstream</dt><dd>{pick(usage,'upstreamCost')==null?'Chưa có':formatVnd(Number(pick(usage,'upstreamCost')))}</dd></div></dl><button className="button primary full-button" onClick={()=>setPoolModal(true)}><Plus/> Map model vào pool</button></article>
+    </section>
+    <section className="tokenx-detail-grid">
+      <article className="card tokenx-account-card"><div className="table-section-heading"><div><p className="eyebrow">TOKENX ACCOUNT</p><h3>Tài khoản nguồn đang kết nối</h3></div><UserRound/></div><dl><div><dt>Tên đăng nhập</dt><dd>{String(pick(account,'username','name')??'—')}</dd></div><div><dt>Email</dt><dd>{String(pick(account,'email')??'—')}</dd></div><div><dt>Vai trò</dt><dd>{String(pick(account,'role')??'user')}</dd></div><div><dt>Trạng thái</dt><dd>{String(pick(account,'status')??'active')}</dd></div></dl><p>TokenX hiện chỉ cung cấp quản lý tài khoản đang đăng nhập, không có API tạo nhiều user từ Nexora.</p></article>
+      <article className="card table-card"><div className="table-section-heading"><div><p className="eyebrow">TOKENX MODELS</p><h3>Model và bảng giá upstream</h3></div><span>{pricing.length} model</span></div>{pricing.length?<div className="table-wrap"><table><thead><tr><th>Model</th><th>Input / 1M</th><th>Output / 1M</th><th>Trạng thái</th></tr></thead><tbody>{pricing.map((item,index)=><tr key={String(pick(item,'id','model','model_id')??index)}><td><b>{String(pick(item,'display_name','name','model','model_id')??'—')}</b><small className="block">{String(pick(item,'model_id','model')??'')}</small></td><td>{formatVnd(Number(pick(item,'input_price','input_cost','input')??0))}</td><td>{formatVnd(Number(pick(item,'output_price','output_cost','output')??0))}</td><td>{String(pick(item,'status','enabled')??'active')}</td></tr>)}</tbody></table></div>:<p className="tokenx-empty-copy">TokenX chưa trả dữ liệu pricing-rules.</p>}</article>
     </section>
     {poolModal&&<PoolModal pool={pool} setPool={setPool} close={()=>setPoolModal(false)} submit={()=>mapPool.mutate()} pending={mapPool.isPending} error={mapPool.isError}/>} 
   </div>;

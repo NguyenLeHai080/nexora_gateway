@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     tokenx_username: str = ""
     tokenx_password: str = ""
     tokenx_api_key: str = ""
+    tokenx_deposit_reserve_percent: int = 62
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property

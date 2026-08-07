@@ -28,6 +28,11 @@ class TokenXQuotaModeUpdate(BaseModel):
     mode: Literal["limited", "unlimited"]
 
 
+class TokenXQuotaAdjustment(BaseModel):
+    amount: int = Field(ne=0)
+    description: str = Field(min_length=3, max_length=200)
+
+
 class TokenXPoolRequest(BaseModel):
     model_id: str = Field(min_length=2, max_length=100)
     display_name: str = Field(min_length=2, max_length=120)
@@ -120,6 +125,11 @@ async def list_transactions(_: User = Depends(require_super_admin)) -> Any:
 @router.get("/request-logs")
 async def list_request_logs(_: User = Depends(require_super_admin)) -> Any:
     return await remote_resource("request-logs?page=1&page_size=200")
+
+
+@router.get("/pricing-rules")
+async def list_pricing_rules(_: User = Depends(require_super_admin)) -> Any:
+    return await remote_resource("pricing-rules")
 
 
 @router.get("/overview")
@@ -228,6 +238,26 @@ async def update_api_key_quota_mode(
     except TokenXError as exc:
         raise tokenx_error(exc) from exc
     db.add(AuditLog(actor_id=admin.id, action="tokenx.api_key.quota_mode", target=f"tokenx-key:{key_id}", details=payload.mode))
+    db.commit()
+    return result
+
+
+@router.post("/api-keys/{key_id}/quota-adjustments")
+async def adjust_api_key_quota(
+    key_id: str,
+    payload: TokenXQuotaAdjustment,
+    admin: User = Depends(require_super_admin),
+    db: Session = Depends(get_db),
+) -> Any:
+    try:
+        result = await tokenx.request(
+            "POST",
+            f"api-keys/{key_id}/quota-adjustments",
+            {"amount": str(payload.amount), "description": payload.description},
+        )
+    except TokenXError as exc:
+        raise tokenx_error(exc) from exc
+    db.add(AuditLog(actor_id=admin.id, action="tokenx.api_key.quota_adjusted", target=f"tokenx-key:{key_id}", details=f"{payload.amount}: {payload.description}"))
     db.commit()
     return result
 
