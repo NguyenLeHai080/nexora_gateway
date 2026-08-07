@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -18,6 +18,14 @@ router = APIRouter(prefix="/admin/tokenx", tags=["TokenX Integration"])
 
 class TokenXApiKeyRequest(BaseModel):
     name: str = Field(min_length=2, max_length=100)
+
+
+class TokenXApiKeyUpdate(BaseModel):
+    status: Literal["active", "disabled", "revoked"]
+
+
+class TokenXQuotaModeUpdate(BaseModel):
+    mode: Literal["limited", "unlimited"]
 
 
 class TokenXPoolRequest(BaseModel):
@@ -183,12 +191,45 @@ async def revoke_api_key(
     db: Session = Depends(get_db),
 ) -> None:
     try:
-        await tokenx.request("DELETE", f"api-keys/{key_id}")
+        await tokenx.request("PATCH", f"api-keys/{key_id}", {"status": "revoked"})
     except TokenXError as exc:
         raise tokenx_error(exc) from exc
     tokenx.invalidate_gateway_key()
     db.add(AuditLog(actor_id=admin.id, action="tokenx.api_key.revoked", target=f"tokenx-key:{key_id}"))
     db.commit()
+
+
+@router.patch("/api-keys/{key_id}")
+async def update_api_key(
+    key_id: str,
+    payload: TokenXApiKeyUpdate,
+    admin: User = Depends(require_super_admin),
+    db: Session = Depends(get_db),
+) -> Any:
+    try:
+        result = await tokenx.request("PATCH", f"api-keys/{key_id}", {"status": payload.status})
+    except TokenXError as exc:
+        raise tokenx_error(exc) from exc
+    tokenx.invalidate_gateway_key()
+    db.add(AuditLog(actor_id=admin.id, action="tokenx.api_key.status", target=f"tokenx-key:{key_id}", details=payload.status))
+    db.commit()
+    return result
+
+
+@router.patch("/api-keys/{key_id}/quota-mode")
+async def update_api_key_quota_mode(
+    key_id: str,
+    payload: TokenXQuotaModeUpdate,
+    admin: User = Depends(require_super_admin),
+    db: Session = Depends(get_db),
+) -> Any:
+    try:
+        result = await tokenx.request("PATCH", f"api-keys/{key_id}/quota-mode", {"mode": payload.mode})
+    except TokenXError as exc:
+        raise tokenx_error(exc) from exc
+    db.add(AuditLog(actor_id=admin.id, action="tokenx.api_key.quota_mode", target=f"tokenx-key:{key_id}", details=payload.mode))
+    db.commit()
+    return result
 
 
 @router.post("/pools", status_code=201)

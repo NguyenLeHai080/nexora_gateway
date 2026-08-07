@@ -218,6 +218,8 @@
   .upstream-key-head form { @apply flex min-w-[390px] gap-2 max-[800px]:min-w-0 max-[560px]:flex-col; }
   .upstream-key-head input { @apply min-w-0 flex-1; }
   .key-icon.upstream { @apply bg-sky-50 text-sky-600; }
+  .tokenx-key-modal { @apply w-[min(560px,100%)]; }
+  .tokenx-key-modal label small { @apply mt-[-4px] text-[10px] font-normal normal-case tracking-normal text-muted; }
   .account-picker { @apply overflow-hidden; }
   .account-picker-head { @apply border-b border-slate-200 p-5; }
   .account-picker-head p, .account-picker-head h3 { @apply m-0; }
@@ -283,6 +285,21 @@
   .user-cell small { @apply mt-1 block text-slate-400; }
   .finance-grid { @apply grid-cols-3 max-[680px]:grid-cols-1; }
   .profit-calculator { @apply mb-6 p-6; }
+  .finance-tabs { @apply mb-6 grid max-w-[720px] grid-cols-3 rounded-xl border border-line bg-white p-1 shadow-sm max-[650px]:grid-cols-1; }
+  .finance-tabs button { @apply flex min-h-11 items-center justify-center gap-2 rounded-lg border-0 bg-transparent px-4 text-xs font-bold text-muted transition; }
+  .finance-tabs button svg { @apply size-4; }
+  .finance-tabs button.active { @apply bg-navy text-white shadow-md; }
+  .finance-summary-grid { @apply grid grid-cols-2 gap-5 max-[800px]:grid-cols-1; }
+  .finance-summary-grid article { @apply p-6; }
+  .finance-summary-grid h3 { @apply mb-4 mt-1; }
+  .finance-summary-grid dl { @apply m-0 grid gap-0; }
+  .finance-summary-grid dl div { @apply flex justify-between border-b border-line py-3 text-sm last:border-0; }
+  .finance-summary-grid dt { @apply text-muted; }
+  .finance-summary-grid dd { @apply m-0 font-bold; }
+  .finance-summary-grid dd.positive { @apply text-emerald-600; }
+  .finance-summary-grid dd.negative { @apply text-red-500; }
+  .finance-method-note { @apply mb-0 mt-4 text-xs leading-5 text-muted; }
+  .finance-history-stack { @apply grid gap-6; }
   .tokenx-ledger { @apply mt-6; }
   .profit-calculator-head { @apply flex items-center justify-between border-b border-line pb-5; }
   .profit-calculator-head h2 { @apply my-1 text-2xl; }

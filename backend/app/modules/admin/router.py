@@ -329,10 +329,19 @@ def revoke_model(user_id: int, model_id: str, admin: User = Depends(require_supe
 
 @router.get("/finance")
 def finance(_: User = Depends(require_super_admin), db: Session = Depends(get_db)) -> dict:
-    revenue = db.scalar(select(func.coalesce(func.sum(Transaction.amount), 0)).where(Transaction.type == "credit")) or 0
-    spent = db.scalar(select(func.coalesce(func.sum(Transaction.amount), 0)).where(Transaction.type == "debit")) or 0
-    gateway_cost = int(spent * .62)
-    return {"revenue": revenue, "gatewayCost": gateway_cost, "profit": spent - gateway_cost, "pending": 0}
+    deposits = db.scalar(select(func.coalesce(func.sum(Transaction.amount), 0)).where(Transaction.type == "credit")) or 0
+    usage_revenue = db.scalar(select(func.coalesce(func.sum(UsageLog.cost), 0))) or 0
+    gateway_cost = int(usage_revenue * .62)
+    return {
+        # Keep revenue for older clients while exposing unambiguous fields.
+        "revenue": deposits,
+        "deposits": deposits,
+        "usageRevenue": usage_revenue,
+        "gatewayCost": gateway_cost,
+        "profit": usage_revenue - gateway_cost,
+        "pending": 0,
+        "costMethod": "estimated_62_percent_of_usage_revenue",
+    }
 
 
 @router.get("/transactions")
