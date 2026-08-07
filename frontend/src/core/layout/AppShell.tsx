@@ -9,7 +9,7 @@ export function AppShell() {
   const [helpItem, setHelpItem] = useState<NavigationItem | null>(null);
   const { user, logout } = useAuth();
   const userOrder = ['/dashboard', '/wallet', '/api-keys', '/tool-setup', '/models', '/logs', '/profile', '/settings'];
-  const adminOrder = ['/dashboard', '/admin/users', '/admin/user-api-keys', '/admin/finance', '/admin/banks', '/admin/providers', '/admin/routing-pools', '/admin/router', '/logs', '/admin/audit', '/profile', '/settings'];
+  const adminOrder = ['/dashboard', '/admin/users', '/admin/user-api-keys', '/admin/finance', '/admin/banks', '/logs', '/admin/providers', '/admin/tokenx', '/admin/routing-pools', '/admin/router', '/admin/audit', '/profile', '/settings'];
   const order = user?.role === 'super_admin' ? adminOrder : userOrder;
   const hiddenForAdmin = new Set(['/wallet', '/api-keys']);
   const items = navigation
