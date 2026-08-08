@@ -304,6 +304,11 @@
   .finance-summary-grid dd.positive { @apply text-emerald-600; }
   .finance-summary-grid dd.negative { @apply text-red-500; }
   .finance-method-note { @apply mb-0 mt-4 text-xs leading-5 text-muted; }
+  .tokenx-funding-card { @apply flex flex-col; }
+  .tokenx-funding-card > strong { @apply mb-3 text-3xl text-navy; }
+  .tokenx-funding-card > img { @apply mx-auto mb-3 w-full max-w-[260px] rounded-xl border border-line bg-white p-2; }
+  .tokenx-funding-card > code { @apply mb-2 rounded-lg bg-slate-100 p-2 text-center font-bold text-indigo-600; }
+  .tokenx-funding-card > small,.tokenx-funding-card > p { @apply text-xs leading-5 text-muted; }
   .finance-history-stack { @apply grid gap-6; }
   .tokenx-ledger { @apply mt-6; }
   .profit-calculator-head { @apply flex items-center justify-between border-b border-line pb-5; }

@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Any, Literal
+import re
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -9,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import require_super_admin
-from app.core.models import AuditLog, ModelCatalog, RoutingPool, UsageLog, User
+from app.core.models import AuditLog, BankAccount, BankQrImage, ModelCatalog, RoutingPool, TokenXFundingAllocation, UsageLog, User
 from app.integrations.tokenx import tokenx
 from app.integrations.tokenx.client import TokenXError
 
@@ -130,6 +132,42 @@ async def list_request_logs(_: User = Depends(require_super_admin)) -> Any:
 @router.get("/pricing-rules")
 async def list_pricing_rules(_: User = Depends(require_super_admin)) -> Any:
     return await remote_resource("pricing-rules")
+
+
+@router.get("/funding")
+def funding(_: User = Depends(require_super_admin), db: Session = Depends(get_db)) -> dict:
+    payee_row = db.execute(
+        select(BankAccount, BankQrImage)
+        .join(BankQrImage, BankQrImage.bank_account_id == BankAccount.id)
+        .where(BankAccount.enabled.is_(False))
+        .order_by(BankQrImage.updated_at.desc())
+    ).first()
+    pending = db.scalar(
+        select(func.coalesce(func.sum(TokenXFundingAllocation.reserve_amount), 0))
+        .where(TokenXFundingAllocation.status == "reserved")
+    ) or 0
+    username = re.sub(r"[^a-zA-Z0-9]", "", settings.tokenx_username).lower()
+    payment_content = f"tkx{username}" if username else ""
+    if not payee_row:
+        return {"configured": False, "pendingAmount": pending, "paymentContent": payment_content}
+    bank, _ = payee_row
+    qr_url = (
+        f"https://img.vietqr.io/image/{quote(bank.bank_code)}-{quote(bank.account_number)}-compact2.png"
+        f"?amount={pending}&addInfo={quote(payment_content)}&accountName={quote(bank.account_name)}"
+    )
+    return {
+        "configured": True,
+        "pendingAmount": pending,
+        "paymentContent": payment_content,
+        "qrUrl": qr_url,
+        "bank": {
+            "id": bank.id,
+            "bankCode": bank.bank_code,
+            "bankName": bank.bank_name,
+            "accountNumber": bank.account_number,
+            "accountName": bank.account_name,
+        },
+    }
 
 
 @router.get("/overview")
